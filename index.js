@@ -31,20 +31,17 @@ class Player {
 
 // Enemy class
 class Enemy extends Player {
-  constructor(x, y, enemyImage, killBox) {
+  constructor(x, y, enemyImage, killBox, enemyLife) {
     super(x, y, enemyImage, killBox);
-    // this.x = x;
-    // this.y = y;
-    // this.image = new Image();
+    this.enemyLife = enemyLife;
     this.image.src = enemyImage;
-    // this.killBox = killBox;
   }
 
   draw() {
     c.drawImage(
       this.image,
-      this.x - this.killBox * 1.4,
-      this.y - this.killBox,
+      this.x - this.killBox * 1.7,
+      this.y - this.killBox + this.killBox,
       this.killBox * 3,
       this.killBox
     );
@@ -54,26 +51,23 @@ class Enemy extends Player {
     this.y += enemyVertical;
     this.x = this.x + enemySpeed;
     this.draw();
-    // super.draw();
   }
 }
 
 // Projectile class
-// class Projectile extends Player {
 class Projectile {
-  // constructor(x, y, killBox, color, speed) {
-  constructor(x, y, killBox, color, speed) {
-    // super(x, y, killBox);
+  constructor(x, y, killBox, color, speed, damage) {
     this.x = x;
     this.y = y;
     this.killBox = killBox;
     this.color = color;
     this.speed = speed;
+    this.playerProjectileDamage = damage;
   }
 
   draw() {
     c.beginPath();
-    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+    c.arc(this.x, this.y, this.killBox, 0, Math.PI * 2, false);
     c.fillStyle = this.color;
     c.fill();
   }
@@ -130,38 +124,45 @@ let player = new Player(
   playerKillBox,
   "image"
 );
-
 let playerSpeed = 8;
+let playerFireRate = 30;
+let fireTimer = 30;
+
+let playerProjectiles = [];
 let playerProjectileSpeed = 8;
 let playerProjectileColor = "white";
 let playerProjectileSize = 3;
-let playerFireRate = 30;
-let fireTimer = 30;
-let playerProjectiles = [];
+let playerProjectileDamage;
 
 let enemies = [];
-enemyImage = [
+let enemyImage = [
   "assets/UFO1.png",
   "assets/UFO2.png",
   "assets/UFO3.png",
   "assets/UFO4.png",
 ];
-// let enemyImage = "assets/UFO1.png";
 let enemyKillbox = 50;
-let enemySpeed = 0.5;
+let enemyLife;
+let enemySpeed = 0.7;
 let enemyVertical = 0.05;
 let enemyCount = 12;
 let enemyFireRate = 997;
-let enemyProjectileSpeed = -3;
+let right = true;
+let changeEnemyImageSpeed;
+let enemyIndex;
+
+let enemyProjectiles = [];
+let enemyProjectileSpeed = -4;
 let enemyProjectileColor = "orange";
 let enemyProjectileSize = 3;
-let right = true;
-let enemyProjectiles = [];
 
 let particles = [];
+let particleColor;
 
 let keys = [];
 
+let score;
+let counter;
 let index = 0;
 let projectileIndex = 0;
 let animationId;
@@ -180,14 +181,15 @@ function init() {
     playerKillBox,
     "image"
   );
-
   playerSpeed = 8;
-  playerProjectileSpeed = 8;
-  playerProjectileColor = "white";
-  playerProjectileSize = 3;
   playerFireRate = 30;
   fireTimer = 30;
+
   playerProjectiles = [];
+  playerProjectileSpeed = 8;
+  playerProjectileColor = "white";
+  playerProjectileSize = 2;
+  playerProjectileDamage = 5;
 
   enemies = [];
   enemyImage = [
@@ -196,53 +198,61 @@ function init() {
     "assets/UFO3.png",
     "assets/UFO4.png",
   ];
-  // enemyImage = "assets/UFO1.png";
   enemyKillbox = 50;
-  enemySpeed = 0.5;
+  enemyLife = 40;
+  enemySpeed = 0.9;
   enemyVertical = 0.05;
-  enemyCount = 12;
-  enemyFireRate = 997;
-  enemyProjectileSpeed = -3;
-  enemyProjectileColor = "orange";
-  enemyProjectileSize = 3;
+  enemyCount = 13;
+  enemyFireRate = 990;
   right = true;
+  changeEnemyImageSpeed = 20;
+  enemyIndex = 0;
+
   enemyProjectiles = [];
+  enemyProjectileSpeed = -7;
+  enemyProjectileColor = "orange";
+  enemyProjectileSize = 2;
 
   particles = [];
+  particleColor = "red";
 
   keys = [];
 
+  score = 0;
+  counter = 0;
   index = 0;
   projectileIndex = 0;
   animationId;
 }
 
 function createEnemies() {
-  let x = 150;
-  let y = 150;
+  let x = 100;
+  let y = 100;
 
   //   place enemies in rows
-  for (count = 0; count <= enemyCount; count++) {
-    if (x >= canvas.width - 200) {
-      y += 200;
+  for (count = 1; count <= enemyCount; count++) {
+    if (x >= canvas.width - 500) {
+      y += 100;
       x = 200;
     }
     x += 200;
 
-    enemies.push(new Enemy(x, y, enemyImage[0], enemyKillbox, "image"));
+    enemies.push(
+      new Enemy(x, y, enemyImage[0], enemyKillbox, enemyLife, "image")
+    );
   }
 }
 
 function controller() {
   // move player left
   if (keys["KeyA"] || keys["ArrowLeft"]) {
-    player.playerImage = playerImage[1];
+    player.image.src = playerImage[1];
     player.x -= playerSpeed;
   }
 
   // move player right
   if (keys["KeyD"] || keys["ArrowRight"]) {
-    player.playerImage = playerImage[2];
+    player.image.src = playerImage[2];
     player.x += playerSpeed;
   }
 
@@ -255,7 +265,8 @@ function controller() {
           player.y,
           playerProjectileSize,
           playerProjectileColor,
-          playerProjectileSpeed
+          playerProjectileSpeed,
+          playerProjectileDamage
         )
       );
       fireTimer = 0;
@@ -289,15 +300,27 @@ function animate() {
   });
 
   enemies.forEach((enemy, index) => {
-    // enemyImage =
+    // change enemy images to cause appearance of rotation
+    if (counter > changeEnemyImageSpeed) {
+      counter = 0;
+      enemy.image.src = enemyImage[enemyIndex];
+      if (enemyIndex < enemyImage.length - 1) {
+        enemyIndex++;
+      } else {
+        enemyIndex = 0;
+      }
+    }
+    counter++;
+
     // reverse direction when enemy reaches edge
-    if (enemy.x > canvas.width - 150 && right == true) {
+    if (enemy.x > canvas.width - 100 && right == true) {
       enemySpeed *= -1;
       right = false;
-    } else if (enemy.x < 150) {
+    } else if (enemy.x < 100) {
       enemySpeed *= -1;
       right = true;
     }
+
     // end game if enemy reaches player Y
     else if (enemy.y > canvas.height - 100) {
       cancelAnimationFrame(animationId);
@@ -321,7 +344,7 @@ function animate() {
               projectile.x,
               projectile.y,
               Math.random() * 2,
-              enemy.color,
+              particleColor,
               {
                 x: (Math.random() - 0.5) * (Math.random() * 10),
                 y: (Math.random() - 0.5) * (Math.random() * 10),
@@ -330,20 +353,24 @@ function animate() {
           );
         }
 
-        // shrink size of enemies when hit
-        if (enemy.killBox - 10 > 5) {
-          // adjusting score when hitting enemies and shrinking
-          // score += 100
-          // scoreElement.innerHTML = score
+        // reduce enemy health when hit and adjust score
+        if (enemy.enemyLife - projectile.playerProjectileDamage > 0) {
+          // reduce enemy life with each hit
+          enemy.enemyLife -= projectile.playerProjectileDamage;
+
+          // adjusting score when hitting enemies
+          score += 100;
+          scoreElement.innerHTML = score;
 
           // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
           setTimeout(() => {
             playerProjectiles.splice(projectileIndex, 1);
           }, 0);
-        } else {
-          // adjusting score when hitting enemies and destroying
-          // score += 250
-          // scoreElement.innerHTML = score
+        }
+        // remove enemy whose health reaches 0 and adjust score
+        else {
+          score += 250;
+          scoreElement.innerHTML = score;
 
           // removes flashing when enemy is removed by waiting until next frame and removes enemy and projectile from arrays
           setTimeout(() => {
@@ -398,11 +425,6 @@ function animate() {
       //     let loseLifeSound = new Audio('assets/loseLifeSound');
       //     loseLifeSound.volume = .3;
       //     loseLifeSound.play()
-
-      //     // destroy enemy that touches player
-      //     enemy.killBox - 60
-      //     enemies.splice(index, 1)
-      //     extraLivesElement.innerHTML = extraLives
       // }
       // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
       setTimeout(() => {
@@ -434,14 +456,7 @@ addEventListener("keydown", (event) => {
 });
 addEventListener("keyup", (event) => {
   keys[event.code] = false;
-  if (
-    event == "KeyA" ||
-    event == "KeyD" ||
-    event == "ArrowLeft" ||
-    event == "ArrowRight"
-  ) {
-    player.playerImage = "assets/ship.png";
-  }
+  player.image.src = playerImage[0];
 });
 
 init();
