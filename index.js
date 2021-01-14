@@ -31,10 +31,11 @@ class Player {
 
 // Enemy class
 class Enemy extends Player {
-  constructor(x, y, enemyImage, killBox, enemyLife) {
+  constructor(x, y, enemyImage, killBox, enemyHealth, counter) {
     super(x, y, enemyImage, killBox);
-    this.enemyLife = enemyLife;
+    this.enemyHealth = enemyHealth;
     this.image.src = enemyImage;
+    this.counter = counter;
   }
 
   draw() {
@@ -72,6 +73,27 @@ class Projectile {
     c.fill();
   }
 
+  update() {
+    this.y = this.y - this.speed;
+    this.x = this.x;
+    this.draw();
+  }
+}
+
+// Bonus drops
+class BonusDrops extends Projectile {
+  constructor(x, y, radius, image, speed, bonus) {
+    super(x, y, radius, image, speed, bonus);
+    this.radius = radius;
+    this.bonus = bonus;
+    this.image = image;
+  }
+  draw() {
+    c.beginPath();
+    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+    c.fillStyle = this.image;
+    c.fill();
+  }
   update() {
     this.y = this.y - this.speed;
     this.x = this.x;
@@ -124,9 +146,10 @@ let player = new Player(
   playerKillBox,
   "image"
 );
-let playerSpeed = 8;
-let playerFireRate = 30;
-let fireTimer = 30;
+let playerSpeed;
+let playerFireRate;
+let fireTimer;
+let additionalLifeScore;
 
 let playerProjectiles = [];
 let playerProjectileSpeed = 8;
@@ -142,7 +165,7 @@ let enemyImage = [
   "assets/UFO4.png",
 ];
 let enemyKillbox = 50;
-let enemyLife;
+let enemyHealth;
 let enemySpeed = 0.7;
 let enemyVertical = 0.05;
 let enemyCount = 12;
@@ -161,7 +184,12 @@ let particleColor;
 
 let keys = [];
 
+let bonusDrops = [];
+let bonusFastFire;
+let bonusShield;
 let score;
+let extraLives;
+let targetScore;
 let counter;
 let index = 0;
 let projectileIndex = 0;
@@ -199,7 +227,7 @@ function init() {
     "assets/UFO4.png",
   ];
   enemyKillbox = 50;
-  enemyLife = 40;
+  enemyHealth = 40;
   enemySpeed = 0.9;
   enemyVertical = 0.05;
   enemyCount = 13;
@@ -218,7 +246,14 @@ function init() {
 
   keys = [];
 
+  bonusDrops = [];
+  bonusFastFire = -10;
+  bonusShield = 10;
+
   score = 0;
+  additionalLifeScore = 5000;
+  targetScore = 5000;
+  extraLives = 0;
   counter = 0;
   index = 0;
   projectileIndex = 0;
@@ -238,7 +273,15 @@ function createEnemies() {
     x += 200;
 
     enemies.push(
-      new Enemy(x, y, enemyImage[0], enemyKillbox, enemyLife, "image")
+      new Enemy(
+        x,
+        y,
+        enemyImage[0],
+        enemyKillbox,
+        enemyHealth,
+        counter,
+        "image"
+      )
     );
   }
 }
@@ -275,6 +318,26 @@ function controller() {
   fireTimer++;
 }
 
+// track score and lives
+function scoreTracker(additionalScore) {
+  score += additionalScore;
+  scoreElement.innerHTML = score;
+  if (score > additionalLifeScore) {
+    additionalLifeScore += targetScore;
+    extraLives++;
+    displayExtraLives(extraLives);
+  }
+}
+
+// display extra lives images
+function displayExtraLives(extraLives) {
+  extraLivesElement.innerHTML = "";
+  for (let i = 0; i < extraLives; i++) {
+    extraLivesElement.innerHTML +=
+      "<img class = 'inline-block ml-2' src = '" + playerImage[0] + "'/>";
+  }
+}
+
 // animation loop
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
@@ -301,8 +364,8 @@ function animate() {
 
   enemies.forEach((enemy, index) => {
     // change enemy images to cause appearance of rotation
-    if (counter > changeEnemyImageSpeed) {
-      counter = 0;
+    if (enemy.counter > changeEnemyImageSpeed) {
+      enemy.counter = 0;
       enemy.image.src = enemyImage[enemyIndex];
       if (enemyIndex < enemyImage.length - 1) {
         enemyIndex++;
@@ -310,7 +373,7 @@ function animate() {
         enemyIndex = 0;
       }
     }
-    counter++;
+    enemy.counter++;
 
     // reverse direction when enemy reaches edge
     if (enemy.x > canvas.width - 100 && right == true) {
@@ -354,13 +417,12 @@ function animate() {
         }
 
         // reduce enemy health when hit and adjust score
-        if (enemy.enemyLife - projectile.playerProjectileDamage > 0) {
-          // reduce enemy life with each hit
-          enemy.enemyLife -= projectile.playerProjectileDamage;
+        if (enemy.enemyHealth - projectile.playerProjectileDamage > 0) {
+          // reduce enemy health with each hit
+          enemy.enemyHealth -= projectile.playerProjectileDamage;
 
           // adjusting score when hitting enemies
-          score += 100;
-          scoreElement.innerHTML = score;
+          scoreTracker(100);
 
           // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
           setTimeout(() => {
@@ -369,8 +431,7 @@ function animate() {
         }
         // remove enemy whose health reaches 0 and adjust score
         else {
-          score += 250;
-          scoreElement.innerHTML = score;
+          scoreTracker(250);
 
           // removes flashing when enemy is removed by waiting until next frame and removes enemy and projectile from arrays
           setTimeout(() => {
@@ -384,7 +445,20 @@ function animate() {
     // randomize enemy firerate and speed of projectiles
     let fireFrequency = Math.random() * (1000 - 1) + 1;
     let variableSpeed = Math.random() * 2;
+    let bonusDropFrequency = Math.random() * 500;
     if (fireFrequency > enemyFireRate) {
+      if (bonusDropFrequency > 490) {
+        bonusDrops.push(
+          new BonusDrops(
+            enemy.x,
+            enemy.y,
+            10,
+            "green",
+            enemyProjectileSpeed + variableSpeed,
+            bonusFastFire
+          )
+        );
+      }
       enemyProjectiles.push(
         new Projectile(
           enemy.x,
@@ -404,28 +478,27 @@ function animate() {
     const dist = Math.hypot(projectile.x - player.x, projectile.y - player.y);
     if (dist - player.killBox - projectile.killBox < 1) {
       // check for extra lives
-      // if (extraLives <= 0) {
+      if (extraLives <= 0) {
+        // play sound when end game
+        // let endGameSound = new Audio('assets/endGameSound');
+        // endGameSound.volume = .6;
+        // endGameSound.play();
 
-      // play sound when end game
-      // let endGameSound = new Audio('assets/endGameSound');
-      // endGameSound.volume = .6;
-      // endGameSound.play();
+        // end game if no extra lives
+        cancelAnimationFrame(animationId);
 
-      // end game if no extra lives
-      cancelAnimationFrame(animationId);
+        // display start game modal when game ends
+        // modalElement.style.display = 'flex'
+        // bigSoreElement.innerHTML = score
+      } else {
+        extraLives -= 1;
+        displayExtraLives(extraLives);
 
-      // display start game modal when game ends
-      // modalElement.style.display = 'flex'
-      // bigSoreElement.innerHTML = score
-
-      // } else {
-      //     extraLives -= 1
-
-      //     // play sound when life is lost
-      //     let loseLifeSound = new Audio('assets/loseLifeSound');
-      //     loseLifeSound.volume = .3;
-      //     loseLifeSound.play()
-      // }
+        //     // play sound when life is lost
+        //     let loseLifeSound = new Audio('assets/loseLifeSound');
+        //     loseLifeSound.volume = .3;
+        //     loseLifeSound.play()
+      }
       // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
       setTimeout(() => {
         enemyProjectiles.splice(projectileIndex, 1);
