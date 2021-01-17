@@ -6,12 +6,15 @@ canvas.height = innerHeight;
 
 // Player class using image
 class Player {
-  constructor(x, y, playerImage, killBox) {
+  constructor(x, y, playerImage, drops) {
     this.x = x;
     this.y = y;
     this.image = new Image();
     this.image.src = playerImage;
-    this.killBox = killBox;
+    this.killBox = 20;
+    this.drops = drops;
+    this.fireRate = 30;
+    this.speed = 8;
   }
 
   draw() {
@@ -31,8 +34,9 @@ class Player {
 
 // Enemy class
 class Enemy extends Player {
-  constructor(x, y, enemyImage, killBox, enemyHealth, counter) {
-    super(x, y, enemyImage, killBox);
+  constructor(x, y, enemyImage, enemyHealth, counter) {
+    super(x, y, enemyImage);
+    this.killBox = 40;
     this.enemyHealth = enemyHealth;
     this.image.src = enemyImage;
     this.counter = counter;
@@ -81,19 +85,21 @@ class Projectile {
 }
 
 // Bonus drops
-class BonusDrops extends Projectile {
-  constructor(x, y, radius, image, speed, bonus) {
-    super(x, y, radius, image, speed, bonus);
-    this.radius = radius;
-    this.bonus = bonus;
-    this.image = image;
+class BonusDrops {
+  constructor(x, y, killBox, speed, bonusIndex) {
+    this.x = x;
+    this.y = y;
+    this.killBox = killBox;
+    this.speed = speed;
+    this.bonusIndex = bonusIndex;
+    this.image = new Image();
+    this.image.src = bonusIndex.image;
   }
+
   draw() {
-    c.beginPath();
-    c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    c.fillStyle = this.image;
-    c.fill();
+    c.drawImage(this.image, this.x, this.y, this.killBox, this.killBox);
   }
+
   update() {
     this.y = this.y - this.speed;
     this.x = this.x;
@@ -138,18 +144,10 @@ let playerImage = [
   "assets/shipLeft.png",
   "assets/shipRight.png",
 ];
-let playerKillBox = 50;
-let player = new Player(
-  x / 2 - playerKillBox,
-  y - 100,
-  playerImage[0],
-  playerKillBox,
-  "image"
-);
-let playerSpeed;
-let playerFireRate;
+let player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
 let fireTimer;
 let additionalLifeScore;
+let playerDrops = [];
 
 let playerProjectiles = [];
 let playerProjectileSpeed = 8;
@@ -164,7 +162,6 @@ let enemyImage = [
   "assets/UFO3.png",
   "assets/UFO4.png",
 ];
-let enemyKillbox = 50;
 let enemyHealth;
 let enemySpeed = 0.7;
 let enemyVertical = 0.05;
@@ -185,8 +182,10 @@ let particleColor;
 let keys = [];
 
 let bonusDrops = [];
-let bonusFastFire;
-let bonusShield;
+let bonusGenerateRate;
+let dropsIndex;
+let dropsArray = [];
+
 let score;
 let extraLives;
 let targetScore;
@@ -194,6 +193,8 @@ let counter;
 let index = 0;
 let projectileIndex = 0;
 let animationId;
+let d = new Date();
+let now = d.getSeconds();
 
 function init() {
   playerImage = [
@@ -201,17 +202,9 @@ function init() {
     "assets/shipLeft.png",
     "assets/shipRight.png",
   ];
-  playerKillBox = 20;
-  player = new Player(
-    x / 2 - playerKillBox,
-    y - 100,
-    playerImage[0],
-    playerKillBox,
-    "image"
-  );
-  playerSpeed = 8;
-  playerFireRate = 30;
+  player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
   fireTimer = 30;
+  playerDrops = [];
 
   playerProjectiles = [];
   playerProjectileSpeed = 8;
@@ -226,11 +219,10 @@ function init() {
     "assets/UFO3.png",
     "assets/UFO4.png",
   ];
-  enemyKillbox = 50;
   enemyHealth = 40;
   enemySpeed = 0.9;
   enemyVertical = 0.05;
-  enemyCount = 13;
+  enemyCount = 14;
   enemyFireRate = 990;
   right = true;
   changeEnemyImageSpeed = 20;
@@ -246,9 +238,29 @@ function init() {
 
   keys = [];
 
-  bonusDrops = [];
-  bonusFastFire = -10;
-  bonusShield = 10;
+  bonusDrops = [
+    {
+      name: "Rapid Fire",
+      effect: 5,
+      duration: 5,
+      image: "assets/rapidFire.png",
+    },
+    {
+      name: "Shield",
+      effect: 20,
+      duration: 5,
+      image: "assets/shield.png",
+    },
+    {
+      name: "Extra Life",
+      effect: 1,
+      duration: 5,
+      image: "assets/extraLife.png",
+    },
+  ];
+  dropsArray = [];
+  bonusGenerateRate = 5000;
+  dropsIndex = 0;
 
   score = 0;
   additionalLifeScore = 5000;
@@ -258,6 +270,8 @@ function init() {
   index = 0;
   projectileIndex = 0;
   animationId;
+  d = new Date();
+  now = d.getSeconds();
 }
 
 function createEnemies() {
@@ -272,17 +286,7 @@ function createEnemies() {
     }
     x += 200;
 
-    enemies.push(
-      new Enemy(
-        x,
-        y,
-        enemyImage[0],
-        enemyKillbox,
-        enemyHealth,
-        counter,
-        "image"
-      )
-    );
+    enemies.push(new Enemy(x, y, enemyImage[0], enemyHealth, counter, "image"));
   }
 }
 
@@ -290,17 +294,30 @@ function controller() {
   // move player left
   if (keys["KeyA"] || keys["ArrowLeft"]) {
     player.image.src = playerImage[1];
-    player.x -= playerSpeed;
+    player.x -= player.speed;
   }
 
   // move player right
   if (keys["KeyD"] || keys["ArrowRight"]) {
     player.image.src = playerImage[2];
-    player.x += playerSpeed;
+    player.x += player.speed;
   }
 
   // player fire
   if (keys["Space"]) {
+    // check for Rapid Fire and adjust fire rate if present
+    // playerDrops.forEach((drop) => {
+    //   if (drop.bonusIndex == bonusDrops[0]) {
+    //     console.log("drop effect:", drop.bonusIndex.effect);
+    //     console.log("fire rate before bonus added", player.fireRate);
+
+    //     player.fireRate - drop.bonusIndex.effect;
+    //     console.log("fire rate after bonus added", player.fireRate);
+    //   }
+    // });
+    // if (playerFireRate < 5) {
+    //   playerFireRate = 5;
+    // }
     if (fireTimer > playerFireRate) {
       playerProjectiles.push(
         new Projectile(
@@ -314,8 +331,8 @@ function controller() {
       );
       fireTimer = 0;
     }
+    fireTimer++;
   }
-  fireTimer++;
 }
 
 // track score and lives
@@ -338,11 +355,48 @@ function displayExtraLives(extraLives) {
   }
 }
 
+// track bonuses
+function bonusTracker() {
+  playerDrops.forEach((drop, index) => {
+    if (drop.bonusIndex.duration > now) {
+      console.log("removing drop from player drops array");
+      playerDrops.splice(index, 1);
+    }
+  });
+}
+
+// collision detection
+function collisionDetection(object, item) {
+  const dist = Math.hypot(item.x - object.x, item.y - object.y);
+  if (dist - object.killBox - item.killBox < 1) {
+    return true;
+  }
+}
+
+// remove item if leaves screen on Y axis
+function yEdgeDetection(item, itemArray, index) {
+  if (item.y < 0 || item.y > canvas.height) {
+    removeItem(itemArray, index);
+    // setTimeout(() => {
+    //   itemArray.splice(index, 1);
+    // }, 0);
+  }
+}
+
+// remove item from array
+function removeItem(itemArray, index) {
+  setTimeout(() => {
+    itemArray.splice(index, 1);
+  }, 0);
+}
+
 // animation loop
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
   animationId = requestAnimationFrame(animate);
+
+  bonusTracker();
 
   controller();
 
@@ -393,8 +447,7 @@ function animate() {
     projectileIndex = 0;
     playerProjectiles.forEach((projectile, projectileIndex) => {
       // handle if enemy is hit
-      const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
-      if (dist - enemy.killBox - projectile.killBox < 1) {
+      if (collisionDetection(enemy, projectile)) {
         // play sound when enemy is hit
         // let explosionSound = new Audio('assets/explosion');
         // explosionSound.volume = .6;
@@ -445,20 +498,8 @@ function animate() {
     // randomize enemy firerate and speed of projectiles
     let fireFrequency = Math.random() * (1000 - 1) + 1;
     let variableSpeed = Math.random() * 2;
-    let bonusDropFrequency = Math.random() * 500;
+    let bonusDropFrequency = Math.random() * bonusGenerateRate;
     if (fireFrequency > enemyFireRate) {
-      if (bonusDropFrequency > 490) {
-        bonusDrops.push(
-          new BonusDrops(
-            enemy.x,
-            enemy.y,
-            10,
-            "green",
-            enemyProjectileSpeed + variableSpeed,
-            bonusFastFire
-          )
-        );
-      }
       enemyProjectiles.push(
         new Projectile(
           enemy.x,
@@ -469,14 +510,25 @@ function animate() {
         )
       );
     }
+    if (bonusDropFrequency < 2) {
+      let randomDrop = Math.floor(Math.random() * bonusDrops.length);
+      dropsArray.push(
+        new BonusDrops(
+          enemy.x,
+          enemy.y,
+          20,
+          (enemyProjectileSpeed + variableSpeed) / 2,
+          bonusDrops[randomDrop]
+        )
+      );
+    }
     enemy.update();
   });
 
   projectileIndex = 0;
   enemyProjectiles.forEach((projectile, projectileIndex) => {
     // handle if player is hit
-    const dist = Math.hypot(projectile.x - player.x, projectile.y - player.y);
-    if (dist - player.killBox - projectile.killBox < 1) {
+    if (collisionDetection(player, projectile)) {
       // check for extra lives
       if (extraLives <= 0) {
         // play sound when end game
@@ -505,21 +557,40 @@ function animate() {
       }, 0);
     }
     // remove projectile from array when leaves screen
-    if (projectile.y > canvas.height) {
-      setTimeout(() => {
-        enemyProjectiles.splice(projectileIndex, 1);
-      }, 0);
-    }
+    yEdgeDetection(projectile, enemyProjectiles, projectileIndex);
+
+    // following replaced by preceding
+
+    // if (projectile.y > canvas.height) {
+    //   setTimeout(() => {
+    //     enemyProjectiles.splice(projectileIndex, 1);
+    //   }, 0);
+    // }
+
     projectile.update();
+  });
+
+  // need to add collision detection and add to array that is players
+  dropsArray.forEach((drop, dropsIndex) => {
+    if (collisionDetection(player, drop)) {
+      playerDrops.push(drop);
+      removeItem(dropsArray, dropsIndex);
+    }
+    yEdgeDetection(drop, dropsArray, dropsIndex);
+    drop.update();
   });
 
   playerProjectiles.forEach((projectile, projectileIndex) => {
     // remove projectile from array when leaves screen
-    if (projectile.y < 0) {
-      setTimeout(() => {
-        playerProjectiles.splice(projectileIndex, 1);
-      }, 0);
-    }
+    yEdgeDetection(projectile, playerProjectiles, projectileIndex);
+
+    // following replaced by preceding
+
+    // if (projectile.y < 0) {
+    //   setTimeout(() => {
+    //     playerProjectiles.splice(projectileIndex, 1);
+    //   }, 0);
+    // }
     projectile.update();
   });
 }
