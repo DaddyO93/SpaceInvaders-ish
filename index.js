@@ -13,7 +13,7 @@ class Player {
     this.image.src = playerImage;
     this.killBox = 20;
     this.drops = drops;
-    this.fireRate = 30;
+    this.fireRate = 50;
     this.speed = 8;
   }
 
@@ -86,14 +86,17 @@ class Projectile {
 
 // Bonus drops
 class BonusDrops {
-  constructor(x, y, killBox, speed, bonusIndex) {
+  constructor(x, y, speed, bonusIndex) {
     this.x = x;
     this.y = y;
-    this.killBox = killBox;
+    this.killBox = 20;
     this.speed = speed;
     this.bonusIndex = bonusIndex;
     this.image = new Image();
     this.image.src = bonusIndex.image;
+    this.duration = bonusIndex.duration;
+    this.effect - bonusIndex.effect;
+    this.dropCounter = bonusIndex.counter;
   }
 
   draw() {
@@ -144,10 +147,16 @@ let playerImage = [
   "assets/shipLeft.png",
   "assets/shipRight.png",
 ];
-let player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
+let playerDrops = [];
+let player = new Player(
+  x / 2 - 20,
+  y - 100,
+  playerImage[0],
+  playerDrops,
+  "image"
+);
 let fireTimer;
 let additionalLifeScore;
-let playerDrops = [];
 
 let playerProjectiles = [];
 let playerProjectileSpeed = 8;
@@ -181,10 +190,31 @@ let particleColor;
 
 let keys = [];
 
-let bonusDrops = [];
+const bonusDrops = [
+  {
+    name: "Rapid Fire",
+    effect: 40,
+    duration: 200,
+    image: "assets/rapidFire.png",
+    counter: 0,
+  },
+  {
+    name: "Shield",
+    effect: 20,
+    duration: 50,
+    image: "assets/shield.png",
+  },
+  {
+    name: "Extra Life",
+    effect: 1,
+    duration: 0,
+    image: "assets/extraLife.png",
+  },
+];
 let bonusGenerateRate;
-let dropsIndex;
+let dropsIndex = {};
 let dropsArray = [];
+let usedDropsArray = [];
 
 let score;
 let extraLives;
@@ -193,18 +223,23 @@ let counter;
 let index = 0;
 let projectileIndex = 0;
 let animationId;
-let d = new Date();
-let now = d.getSeconds();
+let now;
 
 function init() {
+  playerDrops = [];
   playerImage = [
     "assets/ship.png",
     "assets/shipLeft.png",
     "assets/shipRight.png",
   ];
-  player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
+  player = new Player(
+    x / 2 - 20,
+    y - 100,
+    playerImage[0],
+    playerDrops,
+    "image"
+  );
   fireTimer = 30;
-  playerDrops = [];
 
   playerProjectiles = [];
   playerProjectileSpeed = 8;
@@ -229,7 +264,7 @@ function init() {
   enemyIndex = 0;
 
   enemyProjectiles = [];
-  enemyProjectileSpeed = -7;
+  enemyProjectileSpeed = -9;
   enemyProjectileColor = "orange";
   enemyProjectileSize = 2;
 
@@ -238,28 +273,11 @@ function init() {
 
   keys = [];
 
-  bonusDrops = [
-    {
-      name: "Rapid Fire",
-      effect: 5,
-      duration: 5,
-      image: "assets/rapidFire.png",
-    },
-    {
-      name: "Shield",
-      effect: 20,
-      duration: 5,
-      image: "assets/shield.png",
-    },
-    {
-      name: "Extra Life",
-      effect: 1,
-      duration: 5,
-      image: "assets/extraLife.png",
-    },
-  ];
+  bonusDrops;
+  bonusIndex = {};
   dropsArray = [];
-  bonusGenerateRate = 5000;
+  usedDropsArray = [];
+  bonusGenerateRate = 6000;
   dropsIndex = 0;
 
   score = 0;
@@ -270,8 +288,12 @@ function init() {
   index = 0;
   projectileIndex = 0;
   animationId;
-  d = new Date();
-  now = d.getSeconds();
+  now;
+}
+
+function nowTime() {
+  let d = new Date();
+  return (now = d.getTime());
 }
 
 function createEnemies() {
@@ -306,19 +328,11 @@ function controller() {
   // player fire
   if (keys["Space"]) {
     // check for Rapid Fire and adjust fire rate if present
-    // playerDrops.forEach((drop) => {
-    //   if (drop.bonusIndex == bonusDrops[0]) {
-    //     console.log("drop effect:", drop.bonusIndex.effect);
-    //     console.log("fire rate before bonus added", player.fireRate);
 
-    //     player.fireRate - drop.bonusIndex.effect;
-    //     console.log("fire rate after bonus added", player.fireRate);
-    //   }
-    // });
-    // if (playerFireRate < 5) {
-    //   playerFireRate = 5;
-    // }
-    if (fireTimer > playerFireRate) {
+    if (player.fireRate < 10) {
+      player.fireRate = 10;
+    }
+    if (fireTimer > player.fireRate) {
       playerProjectiles.push(
         new Projectile(
           player.x,
@@ -355,12 +369,27 @@ function displayExtraLives(extraLives) {
   }
 }
 
-// track bonuses
+// track bonuses to remove from used list
 function bonusTracker() {
-  playerDrops.forEach((drop, index) => {
-    if (drop.bonusIndex.duration > now) {
-      console.log("removing drop from player drops array");
-      playerDrops.splice(index, 1);
+  player.drops.forEach((drop, index) => {
+    if (drop.bonusIndex == bonusDrops[0]) {
+      player.fireRate -= drop.bonusIndex.effect;
+      usedDropsArray.push(drop);
+      removeItem(player.drops, index);
+    } else if (drop.bonusIndex == bonusDrops[2]) {
+      extraLives++;
+      displayExtraLives(extraLives);
+      removeItem(player.drops, index);
+    }
+  });
+  usedDropsArray.forEach((drop, index) => {
+    if (drop.bonusIndex.duration < drop.dropCounter) {
+      if (drop.bonusIndex == bonusDrops[0]) {
+        player.fireRate += drop.bonusIndex.effect;
+        usedDropsArray.splice(index, 1);
+      }
+    } else {
+      drop.dropCounter++;
     }
   });
 }
@@ -377,9 +406,6 @@ function collisionDetection(object, item) {
 function yEdgeDetection(item, itemArray, index) {
   if (item.y < 0 || item.y > canvas.height) {
     removeItem(itemArray, index);
-    // setTimeout(() => {
-    //   itemArray.splice(index, 1);
-    // }, 0);
   }
 }
 
@@ -395,8 +421,6 @@ function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
   animationId = requestAnimationFrame(animate);
-
-  bonusTracker();
 
   controller();
 
@@ -512,11 +536,18 @@ function animate() {
     }
     if (bonusDropFrequency < 2) {
       let randomDrop = Math.floor(Math.random() * bonusDrops.length);
+      // let temp = new BonusDrops(
+      //   enemy.x,
+      //   enemy.y,
+      //   (enemyProjectileSpeed + variableSpeed) / 2,
+      //   bonusDrops[randomDrop]
+      // );
+      // console.log(temp);
+      // dropsArray.push(temp);
       dropsArray.push(
         new BonusDrops(
           enemy.x,
           enemy.y,
-          20,
           (enemyProjectileSpeed + variableSpeed) / 2,
           bonusDrops[randomDrop]
         )
@@ -559,21 +590,13 @@ function animate() {
     // remove projectile from array when leaves screen
     yEdgeDetection(projectile, enemyProjectiles, projectileIndex);
 
-    // following replaced by preceding
-
-    // if (projectile.y > canvas.height) {
-    //   setTimeout(() => {
-    //     enemyProjectiles.splice(projectileIndex, 1);
-    //   }, 0);
-    // }
-
     projectile.update();
   });
 
-  // need to add collision detection and add to array that is players
+  // iterate through drops array and detect collision and y edge
   dropsArray.forEach((drop, dropsIndex) => {
     if (collisionDetection(player, drop)) {
-      playerDrops.push(drop);
+      player.drops.push(drop);
       removeItem(dropsArray, dropsIndex);
     }
     yEdgeDetection(drop, dropsArray, dropsIndex);
@@ -583,16 +606,9 @@ function animate() {
   playerProjectiles.forEach((projectile, projectileIndex) => {
     // remove projectile from array when leaves screen
     yEdgeDetection(projectile, playerProjectiles, projectileIndex);
-
-    // following replaced by preceding
-
-    // if (projectile.y < 0) {
-    //   setTimeout(() => {
-    //     playerProjectiles.splice(projectileIndex, 1);
-    //   }, 0);
-    // }
     projectile.update();
   });
+  bonusTracker();
 }
 
 addEventListener("keydown", (event) => {
