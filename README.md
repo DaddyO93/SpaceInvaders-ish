@@ -12,6 +12,8 @@ Play the game here:
 		left = A or left-arrow
 
 		right = D or right-arrow
+		
+		refresh the page to start over (that is a feature being built right now)
 
  https://daddyo93.github.io/SpaceInvaders-ish-js-game/
  
