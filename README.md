@@ -8,7 +8,9 @@ This is a work in progress, check back often to see the progression.
 Play the game here:
 
 spacebar = fire
+
 left = A or left-arrow
+
 right = D or right-arrow
 
  https://daddyo93.github.io/SpaceInvaders-ish-js-game/
