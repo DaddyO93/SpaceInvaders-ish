@@ -1,3 +1,5 @@
+// import { controller } from "./controller.js";
+
 const canvas = document.querySelector("canvas");
 const c = canvas.getContext("2d");
 
@@ -11,10 +13,10 @@ class Player {
     this.y = y;
     this.image = new Image();
     this.image.src = playerImage;
-    this.killBox = 20;
+    this.killBox = 15;
     this.drops = drops;
-    this.fireRate = 50;
-    this.speed = 8;
+    this.fireRate = 45;
+    this.speed = 7;
   }
 
   draw() {
@@ -46,7 +48,7 @@ class Enemy extends Player {
     c.drawImage(
       this.image,
       this.x - this.killBox * 1.7,
-      this.y - this.killBox + this.killBox,
+      this.y - this.killBox + this.killBox + Math.random(-1.2) * 1.2,
       this.killBox * 3,
       this.killBox
     );
@@ -199,10 +201,11 @@ const bonusDrops = [
     counter: 0,
   },
   {
-    name: "Shield",
-    effect: 20,
-    duration: 50,
+    name: "Speed Boost",
+    effect: 5,
+    duration: 200,
     image: "assets/shield.png",
+    counter: 0,
   },
   {
     name: "Extra Life",
@@ -224,6 +227,7 @@ let index = 0;
 let projectileIndex = 0;
 let animationId;
 let now;
+let nextLevel;
 
 function init() {
   playerDrops = [];
@@ -255,7 +259,7 @@ function init() {
     "assets/UFO4.png",
   ];
   enemyHealth = 40;
-  enemySpeed = 0.9;
+  enemySpeed = 1;
   enemyVertical = 0.05;
   enemyCount = 14;
   enemyFireRate = 990;
@@ -289,6 +293,7 @@ function init() {
   projectileIndex = 0;
   animationId;
   now;
+  nextLevel;
 }
 
 function nowTime() {
@@ -310,8 +315,31 @@ function createEnemies() {
 
     enemies.push(new Enemy(x, y, enemyImage[0], enemyHealth, counter, "image"));
   }
+  nextLevel = "levelTwo";
 }
 
+function levelTwo() {
+  x = 100;
+  y = 100;
+  enemyCount = 28;
+  for (count = 1; count <= enemyCount; count++) {
+    if (x >= canvas.width - 500) {
+      y += 100;
+      x = 200;
+    }
+    x += 200;
+
+    enemies.push(new Enemy(x, y, enemyImage[0], enemyHealth, counter, "image"));
+  }
+}
+
+function nextLevelTest() {
+  if (enemies.length < 1) {
+    nextLevel();
+  }
+}
+
+// controller;
 function controller() {
   // move player left
   if (keys["KeyA"] || keys["ArrowLeft"]) {
@@ -365,15 +393,25 @@ function displayExtraLives(extraLives) {
   extraLivesElement.innerHTML = "";
   for (let i = 0; i < extraLives; i++) {
     extraLivesElement.innerHTML +=
-      "<img class = 'inline-block ml-2' src = '" + playerImage[0] + "'/>";
+      "<img class = 'inline-block ml-2' style='width:30px;height:30px;' src = '" +
+      playerImage[0] +
+      "'/>";
   }
 }
 
 // track bonuses to remove from used list
 function bonusTracker() {
+  // add effect from drop
   player.drops.forEach((drop, index) => {
     if (drop.bonusIndex == bonusDrops[0]) {
       player.fireRate -= drop.bonusIndex.effect;
+      if (player.fireRate < 45) {
+        player, (fireRate = 45);
+      }
+      usedDropsArray.push(drop);
+      removeItem(player.drops, index);
+    } else if (drop.bonusIndex == bonusDrops[1]) {
+      player.speed += drop.bonusIndex.effect;
       usedDropsArray.push(drop);
       removeItem(player.drops, index);
     } else if (drop.bonusIndex == bonusDrops[2]) {
@@ -382,11 +420,15 @@ function bonusTracker() {
       removeItem(player.drops, index);
     }
   });
+  // check for time-out for used drop and remove
   usedDropsArray.forEach((drop, index) => {
     if (drop.bonusIndex.duration < drop.dropCounter) {
       if (drop.bonusIndex == bonusDrops[0]) {
         player.fireRate += drop.bonusIndex.effect;
-        usedDropsArray.splice(index, 1);
+        removeItem(usedDropsArray, index);
+      } else if (drop.bonusIndex == bonusDrops[1]) {
+        player.speed -= drop.bonusIndex.effect;
+        removeItem(usedDropsArray, index);
       }
     } else {
       drop.dropCounter++;
@@ -536,14 +578,6 @@ function animate() {
     }
     if (bonusDropFrequency < 2) {
       let randomDrop = Math.floor(Math.random() * bonusDrops.length);
-      // let temp = new BonusDrops(
-      //   enemy.x,
-      //   enemy.y,
-      //   (enemyProjectileSpeed + variableSpeed) / 2,
-      //   bonusDrops[randomDrop]
-      // );
-      // console.log(temp);
-      // dropsArray.push(temp);
       dropsArray.push(
         new BonusDrops(
           enemy.x,
@@ -554,6 +588,7 @@ function animate() {
       );
     }
     enemy.update();
+    nextLevelTest();
   });
 
   projectileIndex = 0;
