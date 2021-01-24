@@ -1,6 +1,20 @@
 # SpaceInvaders-ish
 A JavaScript game
 
-Remember the old Atari Space Invaders? 
+Remember the old Atari Space Invaders? Similar, but only sort-of.
 
-Built in JavaScript and HTML
+This is a work in progress, check back often to see the progression.
+
+Play the game here:
+
+		spacebar = fire
+
+		left = A or left-arrow
+
+		right = D or right-arrow
+		
+		refresh the page to start over (that is a feature being built right now)
+
+ https://daddyo93.github.io/SpaceInvaders-ish-js-game/
+ 
+ Built in JavaScript and HTML
