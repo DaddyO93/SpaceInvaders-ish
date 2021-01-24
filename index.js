@@ -15,15 +15,19 @@ class ObjectClass {
     this.imageYOffset = 0;
     this.killBoxXOffset = 1;
     this.killBoxYOffset = 1;
+    this.image = new Image();
   }
 
   collisionDetection(otherObject) {
     const dist = Math.hypot(this.x - otherObject.x, this.y - otherObject.y);
-    if (this.owner == none) {
+    // test for drops collision
+    if (this.owner == 3) {
       return true;
-    } else if (this.owner != otherObject.owner) {
+    }
+    // test for player and enemy projectile collision
+    else if (this.owner != otherObject.owner) {
       if (dist - otherObject.killBox - this.killBox < 1) {
-        otherObject.damage(projectile);
+        otherObject.damage(this);
         // play sound when entity is hit
         // let explosionSound = new Audio('assets/explosion');
         // explosionSound.volume = .6;
@@ -32,25 +36,26 @@ class ObjectClass {
     }
   }
   // remove item from array
-  removeItem(itemArray, index) {
+  removeItem(itemArray) {
     setTimeout(() => {
-      itemArray.splice(index, 1);
+      itemArray.splice(this.index, 1);
     }, 0);
   }
 
-  yEdgeDetection(object, itemArray, index) {
-    if (object.y < 0 || object.y > canvas.height) {
-      this.removeItem(itemArray, index);
+  yEdgeDetection(itemArray) {
+    if (this.y < 0 || this.y > canvas.height) {
+      this.removeItem(itemArray);
     }
   }
 
   setIndex(arrayName) {
     if (arrayName.length < 1) {
       let index = 0;
+      return index;
     } else {
       let index = arrayName[arrayName.length - 1].index;
+      return index;
     }
-    return index;
   }
 
   draw() {
@@ -71,7 +76,6 @@ class ObjectClass {
 class Player extends ObjectClass {
   constructor(x, y, objectImage) {
     super(x, y);
-    this.image - new Image();
     this.image.src = objectImage;
     this.killBox = 15;
     this.fireRate = 45;
@@ -81,26 +85,26 @@ class Player extends ObjectClass {
     this.score = 0;
     this.drops = [];
     this.usedDropsArray = [];
-    this.projectileSpeed = 8;
+    this.projectileSpeed = 1;
     this.projectileColor = "white";
     this.projectilesize = 3;
     this.projectileDamage = 5;
     this.imageXOffset = 1.4;
     this.killBoxXOffset = 3;
     this.killBoxYOffset = 3;
-    this.owner = player;
+    this.owner = 1;
   }
 
   controller() {
     // move player left
     if (keys["KeyA"] || keys["ArrowLeft"]) {
-      this.image.src = this.playerImage[1];
+      this.image.src = playerImage[1];
       this.x -= this.speed;
     }
 
     // move player right
     if (keys["KeyD"] || keys["ArrowRight"]) {
-      this.image.src = this.playerImage[2];
+      this.image.src = playerImage[2];
       this.x += this.speed;
     }
 
@@ -111,7 +115,7 @@ class Player extends ObjectClass {
       if (this.fireRate < 20) {
         this.fireRate = 20;
       }
-      if (fireTimer > this.fireRate) {
+      if (this.fireTimer > this.fireRate) {
         let index = this.setIndex(projectiles);
         projectiles.push(
           new Projectile(
@@ -133,66 +137,69 @@ class Player extends ObjectClass {
 
   damage(projectile) {
     // handle if player is hit
-    if (collisionDetection(projectile)) {
-      // check for extra lives
-      if (this.extraLives <= 0) {
-        // play sound when end game
-        // let endGameSound = new Audio('assets/endGameSound');
-        // endGameSound.volume = .6;
-        // endGameSound.play();
+    // if (collisionDetection(projectile)) {
+    // check for extra lives
+    if (this.extraLives <= 0) {
+      // play sound when end game
+      // let endGameSound = new Audio('assets/endGameSound');
+      // endGameSound.volume = .6;
+      // endGameSound.play();
 
-        // end game if no extra lives
-        cancelAnimationFrame(animationId);
+      // end game if no extra lives
+      cancelAnimationFrame(animationId);
 
-        // display start game modal when game ends
-        // modalElement.style.display = 'flex'
-        // bigSoreElement.innerHTML = score
-      } else {
-        this.extraLives -= 1;
-        gameManager.displayExtraLives(this.extraLives);
+      // display start game modal when game ends
+      // modalElement.style.display = 'flex'
+      // bigSoreElement.innerHTML = score
+    } else {
+      this.extraLives -= 1;
+      // gameManager.displayExtraLives(this.extraLives);
+      displayExtraLives(this.extraLives);
 
-        //     // play sound when life is lost
-        //     let loseLifeSound = new Audio('assets/loseLifeSound');
-        //     loseLifeSound.volume = .3;
-        //     loseLifeSound.play()
-      }
-      // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
-      setTimeout(() => {
-        enemyProjectiles.splice(projectile.index, 1);
-      }, 0);
+      //     // play sound when life is lost
+      //     let loseLifeSound = new Audio('assets/loseLifeSound');
+      //     loseLifeSound.volume = .3;
+      //     loseLifeSound.play()
     }
+    // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
+    this.removeItem(projectiles);
+    // setTimeout(() => {
+    //   projectiles.splice(projectile.index, 1);
+    // }, 0);
+    // }
   }
 
   // track bonuses to remove from used list
   bonusTracker() {
     // add effect from drop
-    player.drops.forEach((drop) => {
+    this.drops.forEach((drop) => {
       if (drop.bonusIndex == bonusDrops[0]) {
-        player.fireRate -= drop.bonusIndex.effect;
-        if (player.fireRate < 45) {
+        this.fireRate -= drop.bonusIndex.effect;
+        if (this.fireRate < 45) {
           player, (fireRate = 45);
         }
-        usedDropsArray.push(drop);
-        this.removeItem(player.drops, drop.index);
+        this.usedDropsArray.push(drop);
+        this.removeItem(this.drops, drop.index);
       } else if (drop.bonusIndex == bonusDrops[1]) {
-        player.speed += drop.bonusIndex.effect;
-        usedDropsArray.push(drop);
-        this.removeItem(player.drops, drop.index);
+        this.speed += drop.bonusIndex.effect;
+        this.usedDropsArray.push(drop);
+        this.removeItem(this.drops, drop.index);
       } else if (drop.bonusIndex == bonusDrops[2]) {
         extraLives++;
-        gameManager.displayExtraLives(extraLives);
-        this.removeItem(player.drops, drop.index);
+        // gameManager.displayExtraLives(extraLives);
+        displayExtraLives(extraLives);
+        this.removeItem(this.drops, drop.index);
       }
     });
     // check for time-out for used drop and remove
-    usedDropsArray.forEach((drop) => {
+    this.usedDropsArray.forEach((drop) => {
       if (drop.bonusIndex.duration < drop.dropCounter) {
         if (drop.bonusIndex == bonusDrops[0]) {
-          player.fireRate += drop.bonusIndex.effect;
-          this.removeItem(usedDropsArray, drop.index);
+          this.fireRate += drop.bonusIndex.effect;
+          this.removeItem(this.usedDropsArray, drop.index);
         } else if (drop.bonusIndex == bonusDrops[1]) {
-          player.speed -= drop.bonusIndex.effect;
-          this.removeItem(usedDropsArray, drop.index);
+          this.speed -= drop.bonusIndex.effect;
+          this.removeItem(this.usedDropsArray, drop.index);
         }
       } else {
         drop.dropCounter++;
@@ -214,7 +221,6 @@ class Player extends ObjectClass {
 class Enemy extends ObjectClass {
   constructor(x, y, index, objectImage) {
     super(x, y, index);
-    this.image - new Image();
     this.image.src = objectImage;
     this.health = 40;
     this.killBox = 40;
@@ -222,21 +228,19 @@ class Enemy extends ObjectClass {
     this.index = index; // for tracking
     this.speed = 0.7;
     this.enemyVertical = 0.05;
-    this.enemyCount = 12;
-    this.enemyFireRate = 997;
+    this.enemyFireRate = 998;
     this.changeImageSpeed = 20;
     this.projectileSpeed = -7;
     this.projectileColor = "orange";
     this.projectileSize = 2;
     this.imageXOffset = 1.7;
-    this.imageYOffset = Math.random(-1.2) * 1.2;
+    this.imageYOffset = Math.random(-0.2) * 0.2;
     this.killBoxXOffset = 3;
     this.killBoxYOffset = 1;
-    this.counter = 0;
     this.imageIndex = 0;
     this.right = true;
     this.damage = 1;
-    this.owner = enemy;
+    this.owner = 2;
   }
 
   damage(projectile) {
@@ -253,27 +257,32 @@ class Enemy extends ObjectClass {
     }
 
     // reduce enemy health when hit and adjust score
-    if (this.health - projectile.player.projectileDamage > 0) {
+    if (this.health - projectile.playerProjectileDamage > 0) {
       // reduce enemy health with each hit
-      this.health -= projectile.player.projectileDamage;
+      this.health -= projectile.playerProjectileDamage;
 
       // adjusting score when hitting enemies
-      gameManager.scoreTracker(100);
+      // gameManager.scoreTracker(100);
+      scoreTracker(100);
 
       // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
-      setTimeout(() => {
-        player.projectile.splice(projectile.index, 1);
-      }, 0);
-      gameManager.nextLevelTest();
+      this.removeItem(projectiles);
+      // setTimeout(() => {
+      //   projectiles.splice(projectile.index, 1);
+      // }, 0);
+      // gameManager.nextLevelTest();
+      nextLevelTest();
     }
     // remove enemy whose health reaches 0 and adjust score
     else {
-      gameManager.scoreTracker(250);
+      // gameManager.scoreTracker(250);
+      scoreTracker(250);
 
       // removes flashing when enemy is removed by waiting until next frame and removes enemy and projectile from arrays
+      this.removeItem(enemies);
       setTimeout(() => {
-        enemies.splice(this.index, 1);
-        player.projectile.splice(projectile.index, 1);
+        // enemies.splice(this.index, 1);
+        projectiles.splice(projectile.index, 1);
       }, 0);
     }
   }
@@ -309,11 +318,11 @@ class Enemy extends ObjectClass {
 
     // randomize enemy firerate and speed of projectiles
     let fireFrequency = Math.random() * (1000 - 1) + 1;
-    let variableSpeed = Math.random() * 2;
+    let variableSpeed = Math.random() * 1;
     let bonusDropFrequency = Math.random() * bonusGenerateRate;
     let index = this.setIndex(projectiles);
 
-    if (fireFrequency > enemyFireRate) {
+    if (fireFrequency > this.enemyFireRate) {
       projectiles.push(
         new Projectile(
           this.x,
@@ -321,6 +330,7 @@ class Enemy extends ObjectClass {
           this.projectileSize,
           this.projectileColor,
           this.projectileSpeed + variableSpeed,
+          // this.projectileSpeed,
           this.damage,
           this.owner,
           index + 1
@@ -332,9 +342,9 @@ class Enemy extends ObjectClass {
       let index = this.setIndex(dropsArray);
       dropsArray.push(
         new BonusDrops(
-          enemy.x,
-          enemy.y,
-          (projectileSpeed + variableSpeed) / 2,
+          this.x,
+          this.y,
+          ((this.projectileSpeed + variableSpeed) / 2) * -1,
           bonusDrops[randomDrop],
           index + 1
         )
@@ -362,12 +372,15 @@ class Projectile extends ObjectClass {
     c.fill();
   }
 
-  update(entity) {
+  update() {
     this.y = this.y - this.speed;
     this.x = this.x;
 
-    collisionDetection(entity);
-    yEdgeDetection(projectile, enemy.projectiles, projectile.index);
+    enemies.forEach((enemy) => {
+      this.collisionDetection(enemy);
+    });
+    this.collisionDetection(player);
+    this.yEdgeDetection(projectiles);
 
     this.draw();
   }
@@ -409,25 +422,24 @@ class Particle extends ObjectClass {
 class BonusDrops extends ObjectClass {
   constructor(x, y, speed, bonusInfo, index) {
     super(x, y, index);
-    this.bonusGenerateRate = 6000;
     this.dropsIndex = bonusInfo;
     this.killBox = 40;
     this.speed = speed;
     this.bonusInfo = bonusInfo;
-    this.image = new Image();
     this.image.src = bonusInfo.image;
     this.duration = bonusInfo.duration;
     this.effect - bonusInfo.effect;
     this.dropCounter = bonusInfo.counter;
-    this.owner = none;
+    this.owner = 3;
   }
 
-  update(dropsIndex, drop) {
-    if (collisionDetection(player)) {
+  update(drop) {
+    if (this.collisionDetection(player)) {
       player.drops.push(drop);
       this.removeItem(dropsArray, drop.index);
     }
-    yEdgeDetection(drop, dropsArray, dropsIndex);
+    this.yEdgeDetection(dropsArray, drop.index);
+    this.y += this.speed;
     super.draw();
   }
 }
@@ -473,22 +485,18 @@ const bonusDrops = [
     image: "assets/extraLife.png",
   },
 ];
+let bonusGenerateRate;
 let particles = [];
 let projectiles = [];
 let keys = [];
 let dropsArray = [];
 let levelCounter;
-let nextLevel = [levelTwo];
+let enemyCount;
+// let nextLevel = [levelTwo];
 
 function init() {
   animationId;
-  player = new Player(
-    x / 2 - 20,
-    y - 100,
-    playerImage[0],
-    playerDrops,
-    "image"
-  );
+  player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
   additionalLifeScore = 5000;
   targetScore = 5000;
   enemies = [];
@@ -497,76 +505,71 @@ function init() {
   projectiles = [];
   keys = [];
   dropsArray = [];
+  bonusGenerateRate = 6000;
   projectileIndex = 0;
   levelCounter = 0;
+  enemyCount = 12;
+  createEnemies();
 }
 
 // game manager
-class GameManager {
-  levelTwo() {
-    let x = 100;
-    let y = 100;
-    enemyCount = 28;
-    console.log("in level two");
-    for (count = 1; count <= enemyCount; count++) {
-      if (x >= canvas.width - 500) {
-        y += 100;
-        x = 200;
-      }
-      x += 200;
-      enemies.push(
-        new Enemy(x, y, enemyImage[0], enemyHealth, counter, "image")
-      );
+// class GameManager {
+//   constructor() {}
+function levelTwo() {
+  let x = 100;
+  let y = 100;
+  enemyCount = 28;
+  for (let count = 0; count <= enemyCount; count++) {
+    if (x >= canvas.width - 500) {
+      y += 100;
+      x = 200;
     }
-  }
-
-  nextLevelTest() {
-    if (enemies.length < 1) {
-      nextLevel[levelCounter]();
-      levelCounter++;
-    }
-  }
-  // track score and lives
-  scoreTracker(additionalScore) {
-    score += additionalScore;
-    scoreElement.innerHTML = score;
-    if (score > additionalLifeScore) {
-      additionalLifeScore += targetScore;
-      extraLives++;
-      this.displayExtraLives(extraLives);
-    }
-  }
-
-  // display extra lives images
-  displayExtraLives(extraLives) {
-    extraLivesElement.innerHTML = "";
-    for (let i = 0; i < extraLives; i++) {
-      extraLivesElement.innerHTML +=
-        "<img class = 'inline-block ml-2' style='width:30px;height:30px;' src = '" +
-        playerImage[0] +
-        "'/>";
-    }
-  }
-
-  createEnemies() {
-    let x = 100;
-    let y = 100;
-    let index = 0;
-
-    //   place enemies in rows
-    for (count = 1; count <= enemyCount; count++) {
-      if (x >= canvas.width - 500) {
-        y += 100;
-        x = 200;
-      }
-      x += 200;
-
-      // enemies.push(new Enemy(x, y, enemyImage[0], enemyHealth, counter, "image"));
-      enemies.push(new Enemy(x, y, enemyImage[0], index, "image"));
-      index++;
-    }
+    x += 200;
+    enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
   }
 }
+
+function nextLevelTest() {
+  if (enemies.length < 1) {
+    nextLevel[levelCounter]();
+    levelCounter++;
+  }
+}
+// track score and lives
+function scoreTracker(additionalScore) {
+  score += additionalScore;
+  scoreElement.innerHTML = score;
+  if (score > additionalLifeScore) {
+    additionalLifeScore += targetScore;
+    extraLives++;
+    this.displayExtraLives(extraLives);
+  }
+}
+
+// display extra lives images
+function displayExtraLives(extraLives) {
+  extraLivesElement.innerHTML = "";
+  for (let i = 0; i < extraLives; i++) {
+    extraLivesElement.innerHTML +=
+      "<img class = 'inline-block ml-2' style='width:30px;height:30px;' src = '" +
+      playerImage[0] +
+      "'/>";
+  }
+}
+
+function createEnemies() {
+  let x = 100;
+  let y = 100;
+  for (let count = 0; count <= enemyCount; count++) {
+    if (x >= canvas.width - 500) {
+      y += 100;
+      x = 200;
+    }
+    x += 200;
+    enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
+  }
+}
+// }
 
 // animation loop
 function animate() {
@@ -587,14 +590,11 @@ function animate() {
   });
 
   projectiles.forEach((projectile) => {
-    enemies.forEach((enemy) => {
-      projectile.update(enemy);
-    });
-    projectile.update(player);
+    projectile.update();
   });
 
   dropsArray.forEach((drop) => {
-    drop.update(dropsIndex, drop);
+    drop.update(drop);
   });
 }
 
@@ -607,5 +607,4 @@ addEventListener("keyup", (event) => {
 });
 
 init();
-gameManager.createEnemies();
 animate();
