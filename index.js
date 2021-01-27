@@ -6,11 +6,10 @@ canvas.height = innerHeight;
 
 // ObjectClass is base class others extend
 class ObjectClass {
-  constructor(x, y, index) {
+  constructor(x, y) {
     this.x = x;
     this.y = y;
     this.killBox = 0;
-    this.index = index;
     this.imageXOffset = 1;
     this.imageYOffset = 0;
     this.killBoxXOffset = 1;
@@ -18,43 +17,31 @@ class ObjectClass {
     this.image = new Image();
   }
 
-  collisionDetection(otherObject) {
+  collisionDetection(otherObject, index, array) {
     const dist = Math.hypot(this.x - otherObject.x, this.y - otherObject.y);
-    // test for drops collision
-    if (this.owner == 3) {
-      return true;
-    }
-    // test for player and enemy projectile collision
-    else if (this.owner != otherObject.owner) {
-      if (dist - otherObject.killBox - this.killBox < 1) {
-        otherObject.damage(this);
-        // play sound when entity is hit
-        // let explosionSound = new Audio('assets/explosion');
-        // explosionSound.volume = .6;
-        // explosionSound.play();
+    if (dist - otherObject.killBox - this.killBox < 1) {
+      // test for drops collision
+      if (this.owner == 3) {
+        this.removeItem(array, index);
+        return true;
+      }
+      // test for player and enemy projectile collision
+      else if (this.owner != otherObject.owner) {
+        this.removeItem(array, index);
+        return true;
       }
     }
   }
   // remove item from array
-  removeItem(itemArray) {
+  removeItem(itemArray, index) {
     setTimeout(() => {
-      itemArray.splice(this.index, 1);
+      itemArray.splice(index, 1);
     }, 0);
   }
 
-  yEdgeDetection(itemArray) {
+  yEdgeDetection(itemArray, index) {
     if (this.y < 0 || this.y > canvas.height) {
-      this.removeItem(itemArray);
-    }
-  }
-
-  setIndex(arrayName) {
-    if (arrayName.length < 1) {
-      let index = 0;
-      return index;
-    } else {
-      let index = arrayName[arrayName.length - 1].index;
-      return index;
+      this.removeItem(itemArray, index);
     }
   }
 
@@ -85,7 +72,8 @@ class Player extends ObjectClass {
     this.score = 0;
     this.drops = [];
     this.usedDropsArray = [];
-    this.projectileSpeed = 1;
+    this.projectiles = [];
+    this.projectileSpeed = 7;
     this.projectileColor = "white";
     this.projectilesize = 3;
     this.projectileDamage = 5;
@@ -116,8 +104,7 @@ class Player extends ObjectClass {
         this.fireRate = 20;
       }
       if (this.fireTimer > this.fireRate) {
-        let index = this.setIndex(projectiles);
-        projectiles.push(
+        this.projectiles.push(
           new Projectile(
             this.x,
             this.y,
@@ -125,8 +112,7 @@ class Player extends ObjectClass {
             this.projectileColor,
             this.projectileSpeed,
             this.projectileDamage,
-            this.owner,
-            index + 1
+            this.owner
           )
         );
         this.fireTimer = 0;
@@ -135,9 +121,8 @@ class Player extends ObjectClass {
     }
   }
 
-  damage(projectile) {
+  damage() {
     // handle if player is hit
-    // if (collisionDetection(projectile)) {
     // check for extra lives
     if (this.extraLives <= 0) {
       // play sound when end game
@@ -153,7 +138,6 @@ class Player extends ObjectClass {
       // bigSoreElement.innerHTML = score
     } else {
       this.extraLives -= 1;
-      // gameManager.displayExtraLives(this.extraLives);
       displayExtraLives(this.extraLives);
 
       //     // play sound when life is lost
@@ -161,12 +145,6 @@ class Player extends ObjectClass {
       //     loseLifeSound.volume = .3;
       //     loseLifeSound.play()
     }
-    // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
-    this.removeItem(projectiles);
-    // setTimeout(() => {
-    //   projectiles.splice(projectile.index, 1);
-    // }, 0);
-    // }
   }
 
   // track bonuses to remove from used list
@@ -186,7 +164,6 @@ class Player extends ObjectClass {
         this.removeItem(this.drops, drop.index);
       } else if (drop.bonusIndex == bonusDrops[2]) {
         extraLives++;
-        // gameManager.displayExtraLives(extraLives);
         displayExtraLives(extraLives);
         this.removeItem(this.drops, drop.index);
       }
@@ -196,10 +173,10 @@ class Player extends ObjectClass {
       if (drop.bonusIndex.duration < drop.dropCounter) {
         if (drop.bonusIndex == bonusDrops[0]) {
           this.fireRate += drop.bonusIndex.effect;
-          this.removeItem(this.usedDropsArray, drop.index);
+          this.removeItem(this.usedDropsArray, drop);
         } else if (drop.bonusIndex == bonusDrops[1]) {
           this.speed -= drop.bonusIndex.effect;
-          this.removeItem(this.usedDropsArray, drop.index);
+          this.removeItem(this.usedDropsArray, drop);
         }
       } else {
         drop.dropCounter++;
@@ -219,22 +196,21 @@ class Player extends ObjectClass {
 }
 
 class Enemy extends ObjectClass {
-  constructor(x, y, index, objectImage) {
-    super(x, y, index);
+  constructor(x, y, objectImage) {
+    super(x, y);
     this.image.src = objectImage;
     this.health = 40;
     this.killBox = 40;
     this.counter = 0; // for image changing
-    this.index = index; // for tracking
     this.speed = 0.7;
     this.enemyVertical = 0.05;
     this.enemyFireRate = 998;
-    this.changeImageSpeed = 20;
+    this.changeImageSpeed = 20 + Math.random() * 3; // randomize image change speed
     this.projectileSpeed = -7;
     this.projectileColor = "orange";
     this.projectileSize = 2;
     this.imageXOffset = 1.7;
-    this.imageYOffset = Math.random(-0.2) * 0.2;
+    this.imageYOffset = Math.random(-0.2) * 1;
     this.killBoxXOffset = 3;
     this.killBoxYOffset = 1;
     this.imageIndex = 0;
@@ -243,51 +219,40 @@ class Enemy extends ObjectClass {
     this.owner = 2;
   }
 
-  damage(projectile) {
-    // creates explosions here
-    let index = this.setIndex(particles);
+  damage(projectileDamage, index) {
+    // creates explosions
     for (let i = 0; i < this.killBox; i++) {
       particles.push(
-        new Particle(this.x, this.y, Math.random() * 2, index + 1, {
+        new Particle(this.x, this.y, Math.random() * 2, {
           x: (Math.random() - 0.5) * (Math.random() * 10),
           y: (Math.random() - 0.5) * (Math.random() * 10),
         })
       );
-      index++;
     }
 
     // reduce enemy health when hit and adjust score
-    if (this.health - projectile.playerProjectileDamage > 0) {
-      // reduce enemy health with each hit
-      this.health -= projectile.playerProjectileDamage;
+    if (this.health - projectileDamage > 0) {
+      this.health -= projectileDamage;
 
       // adjusting score when hitting enemies
-      // gameManager.scoreTracker(100);
       scoreTracker(100);
-
-      // "setTimeout" removes flashing when projectile is removed by waiting until next frame to removes projectile from array
-      this.removeItem(projectiles);
-      // setTimeout(() => {
-      //   projectiles.splice(projectile.index, 1);
-      // }, 0);
-      // gameManager.nextLevelTest();
-      nextLevelTest();
     }
     // remove enemy whose health reaches 0 and adjust score
     else {
-      // gameManager.scoreTracker(250);
       scoreTracker(250);
 
-      // removes flashing when enemy is removed by waiting until next frame and removes enemy and projectile from arrays
-      this.removeItem(enemies);
-      setTimeout(() => {
-        // enemies.splice(this.index, 1);
-        projectiles.splice(projectile.index, 1);
-      }, 0);
+      this.removeItem(enemies, index);
+      nextLevelTest();
     }
   }
 
-  update() {
+  update(enemyIndex) {
+    player.projectiles.forEach((projectile, index) => {
+      if (this.collisionDetection(projectile, index, player.projectiles)) {
+        this.damage(projectile.damage, enemyIndex);
+      }
+    });
+
     this.y += this.enemyVertical;
     this.x = this.x + this.speed;
     // change enemy images to cause appearance of rotation
@@ -320,7 +285,6 @@ class Enemy extends ObjectClass {
     let fireFrequency = Math.random() * (1000 - 1) + 1;
     let variableSpeed = Math.random() * 1;
     let bonusDropFrequency = Math.random() * bonusGenerateRate;
-    let index = this.setIndex(projectiles);
 
     if (fireFrequency > this.enemyFireRate) {
       projectiles.push(
@@ -330,39 +294,34 @@ class Enemy extends ObjectClass {
           this.projectileSize,
           this.projectileColor,
           this.projectileSpeed + variableSpeed,
-          // this.projectileSpeed,
           this.damage,
-          this.owner,
-          index + 1
+          this.owner
         )
       );
     }
     if (bonusDropFrequency < 2) {
-      let randomDrop = Math.floor(Math.random() * bonusDrops.length);
-      let index = this.setIndex(dropsArray);
-      dropsArray.push(
-        new BonusDrops(
-          this.x,
-          this.y,
-          ((this.projectileSpeed + variableSpeed) / 2) * -1,
-          bonusDrops[randomDrop],
-          index + 1
-        )
-      );
+      // let randomDrop = Math.floor(Math.random() * bonusDrops.length);
+      // dropsArray.push(
+      //   new BonusDrops(
+      //     this.x,
+      //     this.y,
+      //     ((this.projectileSpeed + variableSpeed) / 2) * -1,
+      //     bonusDrops[randomDrop]
+      //   )
+      // );
     }
     super.draw();
   }
 }
 
 class Projectile extends ObjectClass {
-  constructor(x, y, killBox, objectImage, speed, damage, owner, index) {
-    super(x, y, index);
+  constructor(x, y, killBox, objectImage, speed, damage, owner) {
+    super(x, y);
     this.killBox = killBox;
     this.color = objectImage;
     this.speed = speed;
     this.playerProjectileDamage = damage;
     this.owner = owner;
-    this.index = index;
   }
 
   draw() {
@@ -372,28 +331,39 @@ class Projectile extends ObjectClass {
     c.fill();
   }
 
-  update() {
+  update(array, projectileIndex) {
     this.y = this.y - this.speed;
     this.x = this.x;
 
-    enemies.forEach((enemy) => {
-      this.collisionDetection(enemy);
-    });
-    this.collisionDetection(player);
-    this.yEdgeDetection(projectiles);
+    // enemies.forEach((enemy, index) => {
+    //   if (this.collisionDetection(enemy, projectileIndex, projectiles)) {
+    //     enemy.damage(this.damage, index);
+    //     // play sound when entity is hit
+    //     // let explosionSound = new Audio('assets/explosion');
+    //     // explosionSound.volume = .6;
+    //     // explosionSound.play();
+    //   }
+    // });
+
+    if (this.collisionDetection(player, projectileIndex, array)) {
+      player.damage();
+    }
+
+    this.yEdgeDetection(array, projectileIndex);
 
     this.draw();
   }
 }
 
 class Particle extends ObjectClass {
-  constructor(x, y, velocity, index) {
+  // constructor(x, y, velocity, index) {
+  constructor(x, y, velocity) {
     super(x, y, index);
     this.velocity = velocity;
     this.alpha = 1;
     this.friction = 0.97;
     this.color = "red";
-    this.index = index;
+    // this.index = index;
   }
 
   draw() {
@@ -414,15 +384,14 @@ class Particle extends ObjectClass {
     this.y = this.y + this.velocity.y;
     this.alpha -= 0.01;
     if (this.alpha <= 0) {
-      particles.splice(this.index, 1);
+      particles.splice(this, 1);
     }
   }
 }
 
 class BonusDrops extends ObjectClass {
-  constructor(x, y, speed, bonusInfo, index) {
-    super(x, y, index);
-    this.dropsIndex = bonusInfo;
+  constructor(x, y, speed, bonusInfo) {
+    super(x, y);
     this.killBox = 40;
     this.speed = speed;
     this.bonusInfo = bonusInfo;
@@ -433,12 +402,12 @@ class BonusDrops extends ObjectClass {
     this.owner = 3;
   }
 
-  update(drop) {
-    if (this.collisionDetection(player)) {
-      player.drops.push(drop);
-      this.removeItem(dropsArray, drop.index);
+  update() {
+    if (this.collisionDetection(player, dropsArray)) {
+      player.drops.push(this.bonusInfo);
+      this.removeItem(dropsArray, this.bonusInfo);
     }
-    this.yEdgeDetection(dropsArray, drop.index);
+    this.yEdgeDetection(dropsArray, this.bonusInfo);
     this.y += this.speed;
     super.draw();
   }
@@ -488,6 +457,7 @@ const bonusDrops = [
 let bonusGenerateRate;
 let particles = [];
 let projectiles = [];
+let projectileIndex;
 let keys = [];
 let dropsArray = [];
 let levelCounter;
@@ -503,18 +473,15 @@ function init() {
   right = true;
   particles = [];
   projectiles = [];
+  projectileIndex = 0;
   keys = [];
   dropsArray = [];
   bonusGenerateRate = 6000;
-  projectileIndex = 0;
   levelCounter = 0;
   enemyCount = 12;
   createEnemies();
 }
 
-// game manager
-// class GameManager {
-//   constructor() {}
 function levelTwo() {
   let x = 100;
   let y = 100;
@@ -566,36 +533,40 @@ function createEnemies() {
       x = 200;
     }
     x += 200;
-    enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
+    enemies.push(new Enemy(x, y, enemyImage[0], count, "image"));
   }
 }
-// }
 
 // animation loop
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
+  // setInterval((animationId = requestAnimationFrame(animate)), 1000 / 380);
   animationId = requestAnimationFrame(animate);
 
   player.controller();
 
   player.update();
 
-  particles.forEach((particle) => {
-    particle.update();
+  // particles.forEach((particle) => {
+  //   particle.update();
+  // });
+
+  enemies.forEach((enemy, enemyIndex) => {
+    enemy.update(enemyIndex);
   });
 
-  enemies.forEach((enemy) => {
-    enemy.update();
+  projectiles.forEach((projectile, index) => {
+    projectile.update(projectiles, index);
   });
 
-  projectiles.forEach((projectile) => {
-    projectile.update();
+  player.projectiles.forEach((projectile, index) => {
+    projectile.update(player.projectiles, index);
   });
 
-  dropsArray.forEach((drop) => {
-    drop.update(drop);
-  });
+  // dropsArray.forEach((drop) => {
+  //   drop.update();
+  // });
 }
 
 addEventListener("keydown", (event) => {
