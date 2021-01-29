@@ -17,7 +17,7 @@ class ObjectClass {
     this.image = new Image();
   }
 
-  collisionDetection(otherObject, index, array) {
+  collisionDetection(otherObject, index, array, enemyIndex) {
     const dist = Math.hypot(this.x - otherObject.x, this.y - otherObject.y);
     if (dist - otherObject.killBox - this.killBox < 1) {
       // test for drops collision
@@ -28,15 +28,13 @@ class ObjectClass {
       // test for player and enemy projectile collision
       else if (this.owner != otherObject.owner) {
         this.removeItem(array, index);
-        return true;
+        otherObject.damage(this.damage, enemyIndex);
       }
     }
   }
   // remove item from array
   removeItem(itemArray, index) {
-    setTimeout(() => {
-      itemArray.splice(index, 1);
-    }, 0);
+    itemArray.splice(index, 1);
   }
 
   yEdgeDetection(itemArray, index) {
@@ -121,7 +119,7 @@ class Player extends ObjectClass {
     }
   }
 
-  damage() {
+  damage(projectileDamage, index) {
     // handle if player is hit
     // check for extra lives
     if (this.extraLives <= 0) {
@@ -215,7 +213,7 @@ class Enemy extends ObjectClass {
     this.killBoxYOffset = 1;
     this.imageIndex = 0;
     this.right = true;
-    this.damage = 1;
+    this.projectileDamage = 1;
     this.owner = 2;
   }
 
@@ -223,7 +221,7 @@ class Enemy extends ObjectClass {
     // creates explosions
     for (let i = 0; i < this.killBox; i++) {
       particles.push(
-        new Particle(this.x, this.y, Math.random() * 2, {
+        new Particle(this.x, this.y, {
           x: (Math.random() - 0.5) * (Math.random() * 10),
           y: (Math.random() - 0.5) * (Math.random() * 10),
         })
@@ -240,19 +238,12 @@ class Enemy extends ObjectClass {
     // remove enemy whose health reaches 0 and adjust score
     else {
       scoreTracker(250);
-
       this.removeItem(enemies, index);
       nextLevelTest();
     }
   }
 
-  update(enemyIndex) {
-    player.projectiles.forEach((projectile, index) => {
-      if (this.collisionDetection(projectile, index, player.projectiles)) {
-        this.damage(projectile.damage, enemyIndex);
-      }
-    });
-
+  update() {
     this.y += this.enemyVertical;
     this.x = this.x + this.speed;
     // change enemy images to cause appearance of rotation
@@ -294,21 +285,21 @@ class Enemy extends ObjectClass {
           this.projectileSize,
           this.projectileColor,
           this.projectileSpeed + variableSpeed,
-          this.damage,
+          this.projectileDamage,
           this.owner
         )
       );
     }
     if (bonusDropFrequency < 2) {
-      // let randomDrop = Math.floor(Math.random() * bonusDrops.length);
-      // dropsArray.push(
-      //   new BonusDrops(
-      //     this.x,
-      //     this.y,
-      //     ((this.projectileSpeed + variableSpeed) / 2) * -1,
-      //     bonusDrops[randomDrop]
-      //   )
-      // );
+      let randomDrop = Math.floor(Math.random() * bonusDrops.length);
+      dropsArray.push(
+        new BonusDrops(
+          this.x,
+          this.y,
+          ((this.projectileSpeed + variableSpeed) / 2) * -1,
+          bonusDrops[randomDrop]
+        )
+      );
     }
     super.draw();
   }
@@ -320,7 +311,7 @@ class Projectile extends ObjectClass {
     this.killBox = killBox;
     this.color = objectImage;
     this.speed = speed;
-    this.playerProjectileDamage = damage;
+    this.damage = damage;
     this.owner = owner;
   }
 
@@ -334,7 +325,6 @@ class Projectile extends ObjectClass {
   update(array, projectileIndex) {
     this.y = this.y - this.speed;
     this.x = this.x;
-
     // enemies.forEach((enemy, index) => {
     //   if (this.collisionDetection(enemy, projectileIndex, projectiles)) {
     //     enemy.damage(this.damage, index);
@@ -345,10 +335,6 @@ class Projectile extends ObjectClass {
     //   }
     // });
 
-    if (this.collisionDetection(player, projectileIndex, array)) {
-      player.damage();
-    }
-
     this.yEdgeDetection(array, projectileIndex);
 
     this.draw();
@@ -356,14 +342,13 @@ class Projectile extends ObjectClass {
 }
 
 class Particle extends ObjectClass {
-  // constructor(x, y, velocity, index) {
   constructor(x, y, velocity) {
-    super(x, y, index);
+    super(x, y);
     this.velocity = velocity;
     this.alpha = 1;
     this.friction = 0.97;
     this.color = "red";
-    // this.index = index;
+    this.killBox = Math.random(0.2) * 3;
   }
 
   draw() {
@@ -376,16 +361,18 @@ class Particle extends ObjectClass {
     c.restore();
   }
 
-  update() {
-    this.draw();
+  update(index) {
     this.velocity.x *= this.friction;
     this.velocity.y *= this.friction;
     this.x = this.x + this.velocity.x;
     this.y = this.y + this.velocity.y;
     this.alpha -= 0.01;
     if (this.alpha <= 0) {
-      particles.splice(this, 1);
+      setTimeout(() => {
+        particles.splice(index, 1);
+      }, 0);
     }
+    this.draw();
   }
 }
 
@@ -393,6 +380,7 @@ class BonusDrops extends ObjectClass {
   constructor(x, y, speed, bonusInfo) {
     super(x, y);
     this.killBox = 40;
+    this.imageYOffset = 25;
     this.speed = speed;
     this.bonusInfo = bonusInfo;
     this.image.src = bonusInfo.image;
@@ -402,12 +390,12 @@ class BonusDrops extends ObjectClass {
     this.owner = 3;
   }
 
-  update() {
-    if (this.collisionDetection(player, dropsArray)) {
-      player.drops.push(this.bonusInfo);
-      this.removeItem(dropsArray, this.bonusInfo);
+  update(index) {
+    if (this.collisionDetection(player, index, dropsArray)) {
+      console.log("this", this.bonusInfo);
+      player.drops.push(this);
     }
-    this.yEdgeDetection(dropsArray, this.bonusInfo);
+    this.yEdgeDetection(dropsArray, index);
     this.y += this.speed;
     super.draw();
   }
@@ -504,12 +492,12 @@ function nextLevelTest() {
 }
 // track score and lives
 function scoreTracker(additionalScore) {
-  score += additionalScore;
-  scoreElement.innerHTML = score;
-  if (score > additionalLifeScore) {
+  player.score += additionalScore;
+  scoreElement.innerHTML = player.score;
+  if (player.score > additionalLifeScore) {
     additionalLifeScore += targetScore;
-    extraLives++;
-    this.displayExtraLives(extraLives);
+    player.extraLives++;
+    this.displayExtraLives(player.extraLives);
   }
 }
 
@@ -541,22 +529,31 @@ function createEnemies() {
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
-  // setInterval((animationId = requestAnimationFrame(animate)), 1000 / 380);
+  // setInterval((animationId = requestAnimationFrame(animate)), 1000 / 30);
   animationId = requestAnimationFrame(animate);
 
   player.controller();
 
   player.update();
 
-  // particles.forEach((particle) => {
-  //   particle.update();
-  // });
+  particles.forEach((particle, index) => {
+    particle.update(index);
+  });
 
   enemies.forEach((enemy, enemyIndex) => {
+    player.projectiles.forEach((projectile, projectileIndex) => {
+      projectile.collisionDetection(
+        enemy,
+        projectileIndex,
+        player.projectiles,
+        enemyIndex
+      );
+    });
     enemy.update(enemyIndex);
   });
 
   projectiles.forEach((projectile, index) => {
+    projectile.collisionDetection(player, index, projectiles);
     projectile.update(projectiles, index);
   });
 
@@ -564,9 +561,9 @@ function animate() {
     projectile.update(player.projectiles, index);
   });
 
-  // dropsArray.forEach((drop) => {
-  //   drop.update();
-  // });
+  dropsArray.forEach((drop, index) => {
+    drop.update(index);
+  });
 }
 
 addEventListener("keydown", (event) => {
