@@ -467,7 +467,7 @@ function init() {
   dropsArray = [];
   bonusGenerateRate = 6000;
   levelCounter = 0;
-  enemyCount = 1;
+  enemyCount = 12;
   createEnemies();
 }
 
