@@ -63,7 +63,7 @@ class Player extends ObjectClass {
     super(x, y);
     this.image.src = objectImage;
     this.killBox = 15;
-    this.fireRate = 45;
+    this.fireRate = 50;
     this.fireTimer = 30;
     this.speed = 7;
     this.extraLives = 0;
@@ -149,31 +149,34 @@ class Player extends ObjectClass {
   bonusTracker() {
     // add effect from drop
     this.drops.forEach((drop) => {
-      if (drop.bonusIndex == bonusDrops[0]) {
-        this.fireRate -= drop.bonusIndex.effect;
-        if (this.fireRate < 45) {
-          player, (fireRate = 45);
+      if (drop.bonusInfo == bonusDrops[0]) {
+        this.fireRate -= drop.bonusInfo.effect;
+        if (this.fireRate < 20) {
+          this.fireRate = 20;
         }
         this.usedDropsArray.push(drop);
         this.removeItem(this.drops, drop.index);
-      } else if (drop.bonusIndex == bonusDrops[1]) {
-        this.speed += drop.bonusIndex.effect;
+      } else if (drop.bonusInfo == bonusDrops[1]) {
+        this.speed += drop.bonusInfo.effect;
         this.usedDropsArray.push(drop);
         this.removeItem(this.drops, drop.index);
-      } else if (drop.bonusIndex == bonusDrops[2]) {
-        extraLives++;
-        displayExtraLives(extraLives);
+      } else if (drop.bonusInfo == bonusDrops[2]) {
+        this.extraLives++;
+        displayExtraLives(this.extraLives);
         this.removeItem(this.drops, drop.index);
       }
     });
     // check for time-out for used drop and remove
     this.usedDropsArray.forEach((drop) => {
-      if (drop.bonusIndex.duration < drop.dropCounter) {
-        if (drop.bonusIndex == bonusDrops[0]) {
-          this.fireRate += drop.bonusIndex.effect;
+      if (drop.bonusInfo.duration < drop.dropCounter) {
+        if (drop.bonusInfo == bonusDrops[0]) {
+          this.fireRate += drop.bonusInfo.effect;
+          if (this.fireRate > 50) {
+            this.fireRate = 50;
+          }
           this.removeItem(this.usedDropsArray, drop);
-        } else if (drop.bonusIndex == bonusDrops[1]) {
-          this.speed -= drop.bonusIndex.effect;
+        } else if (drop.bonusInfo == bonusDrops[1]) {
+          this.speed -= drop.bonusInfo.effect;
           this.removeItem(this.usedDropsArray, drop);
         }
       } else {
@@ -239,7 +242,7 @@ class Enemy extends ObjectClass {
     else {
       scoreTracker(250);
       this.removeItem(enemies, index);
-      nextLevelTest();
+      // nextLevelTest();
     }
   }
 
@@ -392,7 +395,6 @@ class BonusDrops extends ObjectClass {
 
   update(index) {
     if (this.collisionDetection(player, index, dropsArray)) {
-      console.log("this", this.bonusInfo);
       player.drops.push(this);
     }
     this.yEdgeDetection(dropsArray, index);
@@ -450,7 +452,6 @@ let keys = [];
 let dropsArray = [];
 let levelCounter;
 let enemyCount;
-// let nextLevel = [levelTwo];
 
 function init() {
   animationId;
@@ -466,30 +467,39 @@ function init() {
   dropsArray = [];
   bonusGenerateRate = 6000;
   levelCounter = 0;
-  enemyCount = 12;
+  enemyCount = 1;
   createEnemies();
 }
 
-function levelTwo() {
-  let x = 100;
-  let y = 100;
-  enemyCount = 28;
-  for (let count = 0; count <= enemyCount; count++) {
-    if (x >= canvas.width - 500) {
-      y += 100;
-      x = 200;
+class levelSelector {
+  constructor() {
+    this.nextLevel = [this.levelOne, this.levelTwo];
+  }
+
+  levelOne() {}
+
+  levelTwo() {
+    let x = 100;
+    let y = 100;
+    enemyCount = 28;
+    for (let count = 0; count <= enemyCount; count++) {
+      if (x >= canvas.width - 500) {
+        y += 100;
+        x = 200;
+      }
+      x += 200;
+      enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
     }
-    x += 200;
-    enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
   }
 }
 
 function nextLevelTest() {
   if (enemies.length < 1) {
-    nextLevel[levelCounter]();
-    levelCounter++;
+    console.log("level up!");
+    levelSelector.nextLevel[1];
   }
 }
+
 // track score and lives
 function scoreTracker(additionalScore) {
   player.score += additionalScore;
