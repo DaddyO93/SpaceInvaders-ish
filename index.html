@@ -9,22 +9,31 @@
 
 <div class="container">
     <div class="fixed bottom-0 left-0 text-white text-sm ml-5 mt-1 select-none">
-    <span class="text-xl">SCORE: </span>
-    <span id="scoreElement" class="text-xl">0</span>
-    <span id="extraLivesElement" class="ml-8 TEXT-XL">EXTRA LIFE EVERY 5000 POINTS!</span>
-</div>
+        <span class="text-xl">LEVEL: </span>
+        <span id="levelElement" class="text-xl">0</span>
+        <span class="ml-8 text-xl">SCORE: </span>
+        <span id="scoreElement" class="text-xl">0</span>
+        <span id="extraLivesElement" class="ml-8 text-xl">EXTRA LIFE EVERY 10,000 POINTS!</span>
+    </div>
 </div>
 
-
-<!-- <div class="fixed inset-0 flex items-center justify-center" id="modalElement">
-    <div class="bg-white max-w-md w-full p-6 text-center">
-        <h1 class="text-4xl font-bold leading-none" id="bigSoreElement">0</h1>
-        <p class="text-sm text-gray-700 mb-4">Points</p>
+<!-- <div class="fixed inset-0 flex items-center justify-center" id="pauseModalElement">
+    <div class="bg-white max-w-md 2-100 p-6 text-center rounded-full">
+        <h1 class="text-gray-700 mb-4 text-xl">Game Paused</h1>
         <div>
-            <button class="bg-blue-500 text-white w-full py-3 rounded-full" id="startGameButton">Start Game</button>
+            <button class="bg-green-800 text-white w-100 p-3 rounded-full" id="pauseGameButton">Go!</button>
         </div>
     </div>
 </div> -->
+
+<div class="fixed inset-0 flex items-center justify-center" id="startModalElement">
+    <div class="bg-white max-w-md w-100 p-6 text-center rounded-full">
+        <h1 class="text-gray-700 mb-4 text-xl">Space Invaders-ish</h1>
+        <div>
+            <button class="bg-green-800 text-white w-100 p-3 rounded-full" id="startGameButton">Start Game</button>
+        </div>
+    </div>
+</div>
 
 <div id="canvas">
     <canvas></canvas>
