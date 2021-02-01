@@ -38,7 +38,7 @@ class ObjectClass {
   }
 
   yEdgeDetection(itemArray, index) {
-    if (this.y < 0 || this.y > canvas.height) {
+    if (this.y < -1000 || this.y > canvas.height) {
       this.removeItem(itemArray, index);
     }
   }
@@ -63,15 +63,15 @@ class Player extends ObjectClass {
     super(x, y);
     this.image.src = objectImage;
     this.killBox = 15;
-    this.fireRate = 50;
-    this.fireTimer = 30;
-    this.speed = 7;
+    this.fireRate = 40; // lower number = faster firing
+    this.fireTimer = this.fireRate + 1; // interval between firing, start > fire rate to fire immediately
+    this.speed = 7; // higher = faster
     this.extraLives = 0;
     this.score = 0;
     this.drops = [];
     this.usedDropsArray = [];
     this.projectiles = [];
-    this.projectileSpeed = 7;
+    this.projectileSpeed = 8;
     this.projectileColor = "white";
     this.projectilesize = 3;
     this.projectileDamage = 5;
@@ -94,14 +94,20 @@ class Player extends ObjectClass {
       this.x += this.speed;
     }
 
+    // if (keys["ShiftLeft"] || keys["ShiftRight"]) {
+    //   pauseModalElement.style.display = "flex";
+    //   let pauseButtonTimer = true;
+    //   pauseGame(pauseButtonTimer);
+    // }
+
     // player fire
     if (keys["Space"]) {
       // check for Rapid Fire and adjust fire rate if present
-
-      if (this.fireRate < 20) {
-        this.fireRate = 20;
-      }
       if (this.fireTimer > this.fireRate) {
+        // play sound when end game
+        let playerFire = new Audio("assets/playerFire");
+        playerFire.volume = 0.6;
+        playerFire.play();
         this.projectiles.push(
           new Projectile(
             this.x,
@@ -124,60 +130,71 @@ class Player extends ObjectClass {
     // check for extra lives
     if (this.extraLives <= 0) {
       // play sound when end game
-      // let endGameSound = new Audio('assets/endGameSound');
-      // endGameSound.volume = .6;
-      // endGameSound.play();
+      let endGameSound = new Audio("assets/endGameSound");
+      endGameSound.volume = 0.6;
+      endGameSound.play();
 
       // end game if no extra lives
       cancelAnimationFrame(animationId);
+      startModalElement.style.display = "flex";
 
       // display start game modal when game ends
-      // modalElement.style.display = 'flex'
-      // bigSoreElement.innerHTML = score
+      pauseModalElement.style.display = "flex";
+      bigSoreElement.innerHTML = score;
     } else {
       this.extraLives -= 1;
       displayExtraLives(this.extraLives);
 
-      //     // play sound when life is lost
-      //     let loseLifeSound = new Audio('assets/loseLifeSound');
-      //     loseLifeSound.volume = .3;
-      //     loseLifeSound.play()
+      // play sound when life is lost
+      let loseLifeSound = new Audio("assets/loseLife");
+      loseLifeSound.volume = 0.3;
+      loseLifeSound.play();
     }
   }
 
   // track bonuses to remove from used list
   bonusTracker() {
     // add effect from drop
-    this.drops.forEach((drop) => {
+    this.drops.forEach((drop, index) => {
+      // rapid fire
       if (drop.bonusInfo == bonusDrops[0]) {
         this.fireRate -= drop.bonusInfo.effect;
-        if (this.fireRate < 20) {
-          this.fireRate = 20;
+        if (this.fireRate <= 5) {
+          this.fireRate = 5;
+          drop.dropCounter = 0;
         }
         this.usedDropsArray.push(drop);
-        this.removeItem(this.drops, drop.index);
-      } else if (drop.bonusInfo == bonusDrops[1]) {
+      }
+      // speed boost
+      else if (drop.bonusInfo == bonusDrops[1]) {
         this.speed += drop.bonusInfo.effect;
+        if (this.speed > 13) {
+          this.speed = 13;
+        }
         this.usedDropsArray.push(drop);
-        this.removeItem(this.drops, drop.index);
-      } else if (drop.bonusInfo == bonusDrops[2]) {
+      }
+      // extra life
+      else if (drop.bonusInfo == bonusDrops[2]) {
         this.extraLives++;
         displayExtraLives(this.extraLives);
-        this.removeItem(this.drops, drop.index);
       }
+      this.removeItem(this.drops, index);
     });
     // check for time-out for used drop and remove
-    this.usedDropsArray.forEach((drop) => {
+    this.usedDropsArray.forEach((drop, index) => {
       if (drop.bonusInfo.duration < drop.dropCounter) {
         if (drop.bonusInfo == bonusDrops[0]) {
           this.fireRate += drop.bonusInfo.effect;
-          if (this.fireRate > 50) {
-            this.fireRate = 50;
+          if (this.fireRate > 40) {
+            this.fireRate = 40;
           }
-          this.removeItem(this.usedDropsArray, drop);
+          this.removeItem(this.usedDropsArray, index);
         } else if (drop.bonusInfo == bonusDrops[1]) {
           this.speed -= drop.bonusInfo.effect;
-          this.removeItem(this.usedDropsArray, drop);
+          if (this.speed <= 7) {
+            this.speed = 7;
+          }
+          this.removeItem(this.usedDropsArray, index);
         }
       } else {
         drop.dropCounter++;
@@ -203,15 +220,15 @@ class Enemy extends ObjectClass {
     this.health = 40;
     this.killBox = 40;
     this.counter = 0; // for image changing
-    this.speed = 0.7;
-    this.enemyVertical = 0.05;
-    this.enemyFireRate = 998;
+    this.speed = 1; // higher = faster
+    this.enemyVertical = 0.15; // higher = faster dropping
+    this.enemyFireRate = 996; // lower = faster firing
     this.changeImageSpeed = 20 + Math.random() * 3; // randomize image change speed
-    this.projectileSpeed = -7;
+    this.projectileSpeed = -7; // lower = faster bullet speed
     this.projectileColor = "orange";
     this.projectileSize = 2;
-    this.imageXOffset = 1.7;
-    this.imageYOffset = Math.random(-0.2) * 1;
+    this.imageXOffset = 1.4;
+    this.imageYOffset = 0.9;
     this.killBoxXOffset = 3;
     this.killBoxYOffset = 1;
     this.imageIndex = 0;
@@ -222,7 +239,7 @@ class Enemy extends ObjectClass {
 
   damage(projectileDamage, index) {
     // creates explosions
-    for (let i = 0; i < this.killBox; i++) {
+    for (let i = 0; i < this.killBox / 2; i++) {
       particles.push(
         new Particle(this.x, this.y, {
           x: (Math.random() - 0.5) * (Math.random() * 10),
@@ -230,6 +247,11 @@ class Enemy extends ObjectClass {
         })
       );
     }
+
+    // play sound when player is hit
+    let explosionSound = new Audio("assets/explosion");
+    explosionSound.volume = 0.6;
+    explosionSound.play();
 
     // reduce enemy health when hit and adjust score
     if (this.health - projectileDamage > 0) {
@@ -240,9 +262,24 @@ class Enemy extends ObjectClass {
     }
     // remove enemy whose health reaches 0 and adjust score
     else {
+      //play sound when enemy destroyed
+      let enemyDestroyed = new Audio("assets/enemyDestroy");
+      enemyDestroyed.volume = 0.6;
+      enemyDestroyed.play();
+
+      // creates explosions
+      for (let i = 0; i < 100; i++) {
+        particles.push(
+          new Particle(this.x, this.y, {
+            x: (Math.random() - 0.5) * (Math.random() * 10),
+            y: (Math.random() - 0.5) * (Math.random() * 10),
+          })
+        );
+      }
+
       scoreTracker(250);
       this.removeItem(enemies, index);
-      // nextLevelTest();
+      nextLevelTest();
     }
   }
 
@@ -273,6 +310,7 @@ class Enemy extends ObjectClass {
     // end game if enemy reaches player Y
     else if (this.y > canvas.height - 100) {
       cancelAnimationFrame(animationId);
+      startModalElement.style.display = "flex";
     }
 
     // randomize enemy firerate and speed of projectiles
@@ -292,17 +330,38 @@ class Enemy extends ObjectClass {
           this.owner
         )
       );
+      // play sound when enemy fires
+      let enemyFire = new Audio("assets/enemyFire");
+      enemyFire.volume = 0.6;
+      enemyFire.play();
     }
     if (bonusDropFrequency < 2) {
+      let weightedLoop = 0;
       let randomDrop = Math.floor(Math.random() * bonusDrops.length);
-      dropsArray.push(
-        new BonusDrops(
-          this.x,
-          this.y,
-          ((this.projectileSpeed + variableSpeed) / 2) * -1,
-          bonusDrops[randomDrop]
-        )
-      );
+      if (randomDrop == 2) {
+        if (weightedLoop < 2) {
+          weightedLoop++;
+        } else {
+          weightedLoop == 0;
+          dropsArray.push(
+            new BonusDrops(
+              this.x,
+              this.y,
+              ((this.projectileSpeed + variableSpeed) / 2) * -1,
+              bonusDrops[randomDrop]
+            )
+          );
+        }
+      } else {
+        dropsArray.push(
+          new BonusDrops(
+            this.x,
+            this.y,
+            ((this.projectileSpeed + variableSpeed) / 2) * -1,
+            bonusDrops[randomDrop]
+          )
+        );
+      }
     }
     super.draw();
   }
@@ -328,15 +387,6 @@ class Projectile extends ObjectClass {
   update(array, projectileIndex) {
     this.y = this.y - this.speed;
     this.x = this.x;
-    // enemies.forEach((enemy, index) => {
-    //   if (this.collisionDetection(enemy, projectileIndex, projectiles)) {
-    //     enemy.damage(this.damage, index);
-    //     // play sound when entity is hit
-    //     // let explosionSound = new Audio('assets/explosion');
-    //     // explosionSound.volume = .6;
-    //     // explosionSound.play();
-    //   }
-    // });
 
     this.yEdgeDetection(array, projectileIndex);
 
@@ -395,6 +445,10 @@ class BonusDrops extends ObjectClass {
 
   update(index) {
     if (this.collisionDetection(player, index, dropsArray)) {
+      // play sound when drop grabbed
+      let powerUp = new Audio("assets/powerup");
+      powerUp.volume = 0.6;
+      powerUp.play();
       player.drops.push(this);
     }
     this.yEdgeDetection(dropsArray, index);
@@ -425,14 +479,14 @@ let right = true;
 const bonusDrops = [
   {
     name: "Rapid Fire",
-    effect: 40,
-    duration: 200,
+    effect: 20,
+    duration: 900,
     image: "assets/rapidFire.png",
     counter: 0,
   },
   {
     name: "Speed Boost",
-    effect: 5,
+    effect: 2,
     duration: 200,
     image: "assets/speedBoost.png",
     counter: 0,
@@ -447,7 +501,6 @@ const bonusDrops = [
 let bonusGenerateRate;
 let particles = [];
 let projectiles = [];
-let projectileIndex;
 let keys = [];
 let dropsArray = [];
 let levelCounter;
@@ -456,48 +509,69 @@ let enemyCount;
 function init() {
   animationId;
   player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
-  additionalLifeScore = 5000;
-  targetScore = 5000;
+  additionalLifeScore = 10000;
+  targetScore = 10000;
   enemies = [];
   right = true;
   particles = [];
   projectiles = [];
-  projectileIndex = 0;
   keys = [];
   dropsArray = [];
-  bonusGenerateRate = 6000;
+  bonusGenerateRate = 8000; // higher = less frequent drop
   levelCounter = 0;
-  enemyCount = 12;
+  levelOne();
+}
+
+function createEnemies() {
+  levelCounter++;
+  displayLevelNumber(levelCounter);
+  let x = canvas.width - 200;
+  let y = 0;
+  for (let count = 1; count <= enemyCount; count++) {
+    if (x <= 300) {
+      y -= 100;
+      x = canvas.width - 200;
+    }
+    x -= 200;
+    enemies.push(new Enemy(x, y, enemyImage[0], count, "image"));
+  }
+  enemies.forEach((enemy) => {
+    enemy.draw();
+  });
+}
+
+function levelOne() {
+  enemyCount = 5;
   createEnemies();
 }
 
-class levelSelector {
-  constructor() {
-    this.nextLevel = [this.levelOne, this.levelTwo];
-  }
-
-  levelOne() {}
-
-  levelTwo() {
-    let x = 100;
-    let y = 100;
-    enemyCount = 28;
-    for (let count = 0; count <= enemyCount; count++) {
-      if (x >= canvas.width - 500) {
-        y += 100;
-        x = 200;
-      }
-      x += 200;
-      enemies.push(new Enemy(x, y, count, enemyImage[0], "image"));
-    }
-  }
+function levelIncrease() {
+  //play sound when start next level
+  let nextLevel = new Audio("assets/nextLevel");
+  nextLevel.volume = 0.6;
+  nextLevel.play();
+  enemyCount += 5;
+  setTimeout(() => {
+    createEnemies();
+  }, 2000);
+  enemies.forEach((enemy) => {
+    this.enemyFireRate -= 10;
+    this.speed += 20;
+    this.enemyVertical += 0.01;
+    this.projectileSpeed -= 3;
+    enemy.draw();
+  });
 }
 
 function nextLevelTest() {
   if (enemies.length < 1) {
-    console.log("level up!");
-    levelSelector.nextLevel[1];
+    levelIncrease();
   }
+}
+
+// display level number
+function displayLevelNumber(levelCounter) {
+  levelElement.innerHTML = levelCounter;
 }
 
 // track score and lives
@@ -522,24 +596,22 @@ function displayExtraLives(extraLives) {
   }
 }
 
-function createEnemies() {
-  let x = 100;
-  let y = 100;
-  for (let count = 0; count <= enemyCount; count++) {
-    if (x >= canvas.width - 500) {
-      y += 100;
-      x = 200;
-    }
-    x += 200;
-    enemies.push(new Enemy(x, y, enemyImage[0], count, "image"));
-  }
-}
+// function pauseGame() {
+//   function recursivePause(pauseGame) {
+//     if (pauseButtonTimer) {
+//       setTimeout(() => {}, 1000);
+//     }
+//     pauseGameButton.addEventListener("click", () => {
+//       pauseModalElement.style.display = "none";
+//       pauseButtonTimer = false;
+//     });
+//   }
+// }
 
 // animation loop
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
-  // setInterval((animationId = requestAnimationFrame(animate)), 1000 / 30);
   animationId = requestAnimationFrame(animate);
 
   player.controller();
@@ -584,5 +656,15 @@ addEventListener("keyup", (event) => {
   player.image.src = playerImage[0];
 });
 
-init();
-animate();
+c.fillStyle = "rgba(0,0,0,1)";
+c.fillRect(0, 0, canvas.width, canvas.height);
+startModalElement.style.display = "flex";
+// pauseModalElement.style.display = "none";
+
+// start game on clicking "start game" button
+startGameButton.addEventListener("click", () => {
+  startModalElement.style.display = "none";
+
+  init();
+  animate();
+});
