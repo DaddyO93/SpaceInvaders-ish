@@ -25,6 +25,15 @@ class ObjectClass {
         this.removeItem(array, index);
         return true;
       }
+      // test for nuke collision
+      else if (this.owner == 4 && this.used == false) {
+        this.used = true;
+        this.killBox = 200;
+        this.draw();
+        setTimeout(() => {
+          this.nukeBlast(otherObject, index, array, enemyIndex);
+        }, 10);
+      }
       // test for player and enemy projectile collision
       else if (this.owner != otherObject.owner) {
         this.removeItem(array, index);
@@ -35,6 +44,12 @@ class ObjectClass {
   // remove item from array
   removeItem(itemArray, index) {
     itemArray.splice(index, 1);
+  }
+
+  nukeBlast(otherObject, index, array, enemyIndex) {
+    this.collisionDetection(otherObject, index, array, enemyIndex);
+    this.removeItem(array, index);
+    otherObject.damage(this.damage, enemyIndex);
   }
 
   yEdgeDetection(itemArray, index) {
@@ -67,11 +82,12 @@ class Player extends ObjectClass {
     this.fireTimer = this.fireRate + 1; // interval between firing, start > fire rate to fire immediately
     this.speed = 7; // higher = faster
     this.extraLives = 0;
+    this.nukes = 0;
     this.score = 0;
     this.drops = [];
     this.usedDropsArray = [];
     this.projectiles = [];
-    this.projectileSpeed = 8;
+    this.projectileSpeed = 9;
     this.projectileColor = "white";
     this.projectilesize = 3;
     this.projectileDamage = 5;
@@ -94,11 +110,30 @@ class Player extends ObjectClass {
       this.x += this.speed;
     }
 
-    // if (keys["ShiftLeft"] || keys["ShiftRight"]) {
-    //   pauseModalElement.style.display = "flex";
-    //   let pauseButtonTimer = true;
-    //   pauseGame(pauseButtonTimer);
-    // }
+    if (keys["KeyS"]) {
+      // let nukes = this.drops.filter(() => drop.bonusInfo == bonusDrops[3]);
+      // if (this.drops.filter("Nuke"))
+      if (this.nukes > 0) {
+        this.projectiles.push(
+          new Projectile(
+            this.x,
+            this.y,
+            10,
+            "yellow",
+            this.projectileSpeed,
+            40,
+            4
+          )
+        );
+        this.nukes--;
+      }
+    }
+
+    // pause feature
+    if (keys["KeyP"]) {
+      cancelAnimationFrame(timeStamp);
+      pauseModalElement.style.display = "flex";
+    }
 
     // player fire
     if (keys["Space"]) {
@@ -125,8 +160,7 @@ class Player extends ObjectClass {
     }
   }
 
-  damage(projectileDamage, index) {
-    // handle if player is hit
+  damage() {
     // check for extra lives
     if (this.extraLives <= 0) {
       // play sound when end game
@@ -135,12 +169,11 @@ class Player extends ObjectClass {
       endGameSound.play();
 
       // end game if no extra lives
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(timeStamp);
       startModalElement.style.display = "flex";
 
       // display start game modal when game ends
-      pauseModalElement.style.display = "flex";
-      bigSoreElement.innerHTML = score;
+      // pauseModalElement.style.display = "flex";
     } else {
       this.extraLives -= 1;
       displayExtraLives(this.extraLives);
@@ -161,7 +194,6 @@ class Player extends ObjectClass {
         this.fireRate -= drop.bonusInfo.effect;
         if (this.fireRate <= 5) {
           this.fireRate = 5;
-          drop.dropCounter = 0;
         }
         this.usedDropsArray.push(drop);
       }
@@ -178,6 +210,11 @@ class Player extends ObjectClass {
         this.extraLives++;
         displayExtraLives(this.extraLives);
       }
+      // nukes
+      else if (drop.bonusInfo == bonusDrops[3]) {
+        this.nukes++;
+        displayNukes(this.nukes);
+      }
       this.removeItem(this.drops, index);
     });
     // check for time-out for used drop and remove
@@ -191,7 +228,7 @@ class Player extends ObjectClass {
           this.removeItem(this.usedDropsArray, index);
         } else if (drop.bonusInfo == bonusDrops[1]) {
           this.speed -= drop.bonusInfo.effect;
-          if (this.speed <= 7) {
+          if (this.speed < 7) {
             this.speed = 7;
           }
           this.removeItem(this.usedDropsArray, index);
@@ -222,9 +259,9 @@ class Enemy extends ObjectClass {
     this.counter = 0; // for image changing
     this.speed = 1; // higher = faster
     this.enemyVertical = 0.15; // higher = faster dropping
-    this.enemyFireRate = 996; // lower = faster firing
+    this.enemyFireRate = 996; // lower = faster firing rate
     this.changeImageSpeed = 20 + Math.random() * 3; // randomize image change speed
-    this.projectileSpeed = -7; // lower = faster bullet speed
+    this.projectileSpeed = -7; // higher = faster bullet speed
     this.projectileColor = "orange";
     this.projectileSize = 2;
     this.imageXOffset = 1.4;
@@ -285,7 +322,8 @@ class Enemy extends ObjectClass {
 
   update() {
     this.y += this.enemyVertical;
-    this.x = this.x + this.speed;
+    this.x += this.speed;
+
     // change enemy images to cause appearance of rotation
     if (this.counter > this.changeImageSpeed) {
       this.counter = 0;
@@ -308,8 +346,9 @@ class Enemy extends ObjectClass {
     }
 
     // end game if enemy reaches player Y
-    else if (this.y > canvas.height - 100) {
-      cancelAnimationFrame(animationId);
+    else if (this.y > canvas.height) {
+      // cancelAnimationFrame(timeStamp);
+      cancelAnimationFrame(timeStamp);
       startModalElement.style.display = "flex";
     }
 
@@ -336,13 +375,15 @@ class Enemy extends ObjectClass {
       enemyFire.play();
     }
     if (bonusDropFrequency < 2) {
-      let weightedLoop = 0;
       let randomDrop = Math.floor(Math.random() * bonusDrops.length);
+      // Reduce frequency of extra life drops
       if (randomDrop == 2) {
-        if (weightedLoop < 2) {
-          weightedLoop++;
+        var count = 0;
+        if (count < extraLifeWeightedLoop) {
+          randomDrop = Math.floor(Math.random() * bonusDrops.length);
+          extraLifeWeightedLoop++;
         } else {
-          weightedLoop == 0;
+          extraLifeWeightedLoop == 0;
           dropsArray.push(
             new BonusDrops(
               this.x,
@@ -385,7 +426,7 @@ class Projectile extends ObjectClass {
   }
 
   update(array, projectileIndex) {
-    this.y = this.y - this.speed;
+    this.y -= this.speed;
     this.x = this.x;
 
     this.yEdgeDetection(array, projectileIndex);
@@ -459,7 +500,7 @@ class BonusDrops extends ObjectClass {
 
 const x = canvas.width;
 const y = canvas.height;
-let animationId;
+let timeStamp;
 const playerImage = [
   "assets/ship.png",
   "assets/shipLeft.png",
@@ -497,6 +538,13 @@ const bonusDrops = [
     duration: 0,
     image: "assets/extraLife.png",
   },
+  {
+    name: "Nuke",
+    effect: 40,
+    duration: 0,
+    image: "assets/nuke.png",
+    used: false,
+  },
 ];
 let bonusGenerateRate;
 let particles = [];
@@ -505,9 +553,9 @@ let keys = [];
 let dropsArray = [];
 let levelCounter;
 let enemyCount;
+let extraLifeWeightedLoop;
 
 function init() {
-  animationId;
   player = new Player(x / 2 - 20, y - 100, playerImage[0], "image");
   additionalLifeScore = 10000;
   targetScore = 10000;
@@ -519,6 +567,7 @@ function init() {
   dropsArray = [];
   bonusGenerateRate = 8000; // higher = less frequent drop
   levelCounter = 0;
+  extraLifeWeightedLoop = 5; // higher = less frequent
   levelOne();
 }
 
@@ -580,6 +629,9 @@ function scoreTracker(additionalScore) {
   scoreElement.innerHTML = player.score;
   if (player.score > additionalLifeScore) {
     additionalLifeScore += targetScore;
+    let extraLife = new Audio("assets/extraLife");
+    extraLife.volume = 0.06;
+    extraLife.play();
     player.extraLives++;
     this.displayExtraLives(player.extraLives);
   }
@@ -593,6 +645,15 @@ function displayExtraLives(extraLives) {
       "<img class = 'inline-block ml-2' style='width:30px;height:30px;' src = '" +
       playerImage[0] +
       "'/>";
+  }
+}
+
+function displayNukes(nukes) {
+  console.log("displaying nukes");
+  nukes.innerHTML = "";
+  for (let i = 0; i < nukes; i++) {
+    nukes.innerHTML +=
+      "<img class = 'inline-block ml-2' style='width:25px;height:25px;' src = 'assets/nuke.png'/>";
   }
 }
 
@@ -612,7 +673,7 @@ function displayExtraLives(extraLives) {
 function animate() {
   c.fillStyle = "rgba(0,0,0,1)";
   c.fillRect(0, 0, canvas.width, canvas.height);
-  animationId = requestAnimationFrame(animate);
+  timeStamp = requestAnimationFrame(animate);
 
   player.controller();
 
@@ -631,6 +692,10 @@ function animate() {
         enemyIndex
       );
     });
+    if (enemy.collisionDetection(player, 0, enemies, enemyIndex)) {
+      player.damage();
+      enemy.damage(40, enemyIndex);
+    }
     enemy.update(enemyIndex);
   });
 
@@ -659,7 +724,13 @@ addEventListener("keyup", (event) => {
 c.fillStyle = "rgba(0,0,0,1)";
 c.fillRect(0, 0, canvas.width, canvas.height);
 startModalElement.style.display = "flex";
-// pauseModalElement.style.display = "none";
+pauseModalElement.style.display = "none";
+
+pauseModalElement.addEventListener("click", () => {
+  pauseModalElement.style.display = "none";
+  timeStamp = 0;
+  animate();
+});
 
 // start game on clicking "start game" button
 startGameButton.addEventListener("click", () => {
