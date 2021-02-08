@@ -166,7 +166,7 @@ class Player extends ObjectClass {
     // pause feature
     if (keys["KeyP"]) {
       cancelAnimationFrame(timeStamp);
-      pauseModalElement.style.display = "flex";
+      pause();
     }
 
     // player fire
@@ -636,7 +636,7 @@ function levelIncrease() {
   enemyCount += 5;
   setTimeout(() => {
     createEnemies();
-  }, 2000);
+  }, 5000);
   enemies.forEach((enemy) => {
     this.enemyFireRate -= 10;
     this.speed += 20;
@@ -689,6 +689,27 @@ function displayNukes(nukes) {
       "<img class = 'inline-block ml-2' style='width:25px;height:25px;' src = 'assets/nuke.png'/>";
   }
 }
+
+function pause() {
+  let sayings = [
+    "Get back out there, Magot!!!",
+    "Don't stop now, the cows are counting on you!",
+    "What? Does your little finger hurt from all that shooting?",
+    "Fine, take a break, but make it snappy!",
+    "Did your Mommy call you for dinner?",
+    "You just letting them walk all over you?",
+    "Bring... It... On...",
+    "Ready yet?",
+    "Let's go!",
+    "Yea, that was a bit intense!",
+  ];
+  pauseModalElement.style.display = "flex";
+  let saying = Math.floor(Math.random(0) * (sayings.length - 1));
+  pauseSayings.innerHTML = "";
+  pauseSayings.innerHTML += sayings[saying];
+}
+
+function displayAlternateSayings() {}
 
 // animation loop
 function animate() {
