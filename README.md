@@ -3,11 +3,11 @@ A JavaScript game
 
 Remember the old Atari Space Invaders? Similar, but only sort-of.
 
-This is a work in progress, check back often to see the progression.
-
 Play the game here:
 
  https://daddyo93.github.io/SpaceInvaders-ish-js-game/
+ 
+I want to give credit where credit is due. The assets you see were made by one of my sons. He's an amateure sprite builder. The sound effects were built with the app BFXR (bfxr.net).
  
  Built in JavaScript and HTML
 
