@@ -7,14 +7,10 @@ This is a work in progress, check back often to see the progression.
 
 Play the game here:
 
-		spacebar = fire
-
-		left = A or left-arrow
-
-		right = D or right-arrow
-		
-		refresh the page to start over (that is a feature being built right now)
-
  https://daddyo93.github.io/SpaceInvaders-ish-js-game/
  
  Built in JavaScript and HTML
+
+Thanks for taking a look, and playing! I hope you enjoy the game, I did.
+
+There are game engines out there to build faster and better games. This project was about learning JavaScript better.
